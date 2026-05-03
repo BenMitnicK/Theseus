@@ -26,6 +26,42 @@ When in doubt about an entry, run the address through Ghidra and compare. The po
 
 | Address | Ghidra name | Theseus name | Subsystem | Description |
 |---------|-------------|--------------|-----------|-------------|
+| 0x00013dac | `_classCInline` | `CInline::class` (scene_groups.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for `CInline`. Anchors the FND/PRD tables that script binds to. |
+| 0x00013db4 | `_classCSwitch` | `CSwitch::class` (scene_groups.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for `CSwitch` (active-child selector). |
+| 0x00013db8 | `_classCTextNode` | `CTextNode::class` (text.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the text-rendering node. |
+| 0x000145cc | `_classCSpinner` | `CSpinner::class` (scene_groups.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the continuous-rotation node. |
+| 0x000147c8 | `_classCMemoryMonitor` | `CMemoryMonitor::class` (memory_monitor.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the storage-device watcher node. |
+| 0x00014b38 | `_classCLayout` | `CLayout::class` (scene_groups.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the radial layout container (used by the dashboard's main menu wheel). |
+| 0x00014b3c | `_classCBillboard` | `CBillboard::class` (scene_groups.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the camera-facing quad node. |
+| 0x0001a06c | `_classCXAppNode` | `CXAppNode::class` (main.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the application root node type. |
+| 0x0001a098 | `_classCTimeDepNode` | `CTimeDepNode::class` (animation_nodes.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for time-dependent node base. |
+| 0x0001a0f0 | `_classCArrayObject` | `CArrayObject::class` (xap_vm.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the script-visible Array type. |
+| 0x0001a1b0 | `_classCDateObject` | `CDateObject::class` (date_node.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the script-visible Date type. |
+| 0x0001a408 | `_classCFile` | `CFile::class` (file_ops.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the File node. |
+| 0x0001a94c | `_classCVec3Object` | `CVec3Object::class` (xap_vm.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the script-visible Vec3 type. |
+| 0x0001a990 | `_classCDiscDrive` | `CDiscDrive::class` (disc_management.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the disc-drive node. |
+| 0x0001aa40 | `_classCConfig` | `CConfig::class` (config.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the dashboard config singleton. |
+| 0x0001aef0 | `_classCRecovery` | (reference only) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the original CRecovery factory-recovery node. Theseus replaced it with `CReboot`. |
+| 0x0001da7c | `_classCScreenSaver` | `CScreenSaver::class` (settings_nodes.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the screensaver node. |
+| 0x0001db0c | `_classCJoystick` | `CJoystick::class` (input.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the joystick / controller input node. |
+| 0x0001dbe0 | `_classCTimeSensor` | `CTimeSensor::class` (animation_nodes.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the VRML97 TimeSensor (animation clock). |
+| 0x0001e198 | `_classCMusicCollection` | `CMusicCollection::class` (music_collection.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the music-collection node. |
+| 0x0001e664 | `_classCSavedGameGrid` | `CSavedGameGrid::class` (savegame_grid.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the memory-panel save grid. |
+| 0x0001eac0 | `_classCCopyDestination` | `CCopyDestination::class` (file_ops.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the copy-target picker node. |
+| 0x0001eb64 | `_classCTransform` | `CTransform::class` (scene_groups.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the VRML97 Transform group node. |
+| 0x0001ed58 | `_classCViewpoint` | `CViewpoint::class` (animation_nodes.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the VRML97 Viewpoint (camera) node. |
+| 0x0001ed84 | `_classCScreen` | `CScreen::class` (screen.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the screen-management node. |
+| 0x0001eddc | `_classCNavigationInfo` | `CNavigationInfo::class` (animation_nodes.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for VRML97 NavigationInfo (camera control mode). |
+| 0x0001eed0 | `_classCCameraPath` | `CCameraPath::class` (camera.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the camera-spline node. |
+| 0x0001efd8 | `_classCHud` | `CHud::class` (hud_node.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the heads-up overlay node. |
+| 0x0001f004 | `_classCPicture` | `CPicture::class` (asset_loader.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the textured-quad picture node. |
+| 0x0001f300 | `_classCMaxMaterial` | `CMaxMaterial::class` (materials.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the 3ds Max material translator node. |
+| 0x0001f33c | `_classCLayer` | `CLayer::class` (scene_groups.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the 2D-overlay layer node. |
+| 0x0001f368 | `_classCKeyboard` | `CKeyboard::class` (keyboard_node.cpp) | [Scene Graph](Node.md) | Static `CNodeClass` registration for the on-screen keyboard node. |
+| 0x000223e4 | `CMathClass_floor` | `CMathClass::floor` (math_node.cpp) | [Math](Math.md) | Script `Math.floor(x)`. Wraps the C runtime `floor`. |
+| 0x00022408 | `CMathClass_pow` | `CMathClass::pow` (math_node.cpp) | [Math](Math.md) | Script `Math.pow(x, y)`. Wraps `pow`. |
+| 0x00022410 | `CMathClass_random` | `CMathClass::random` (math_node.cpp) | [Math](Math.md) | Script `Math.random()`. Returns a `[0, 1)` float from the CRT PRNG. |
+| 0x00022434 | `CMathClass_sqrt` | `CMathClass::sqrt` (math_node.cpp) | [Math](Math.md) | Script `Math.sqrt(x)`. Wraps `sqrt`. |
 | 0x0002c570 | `CXApp::CXApp` | globals init in `main.cpp` | [App Shell](#app-shell) | Constructor for the original `CXApp` singleton. Theseus replaced this with module-scope globals and free functions; the binary class is preserved for reference. |
 | 0x0002d0e0 | `CXApp::Draw` | main loop in `main.cpp` | [App Shell](#app-shell) | Per-frame render entry. Calls scene graph traversal then `Present`. |
 | 0x0002d7e0 | `CXApp::InitApp` | `TheseusInit` in `main.cpp` | [App Shell](#app-shell) | Direct3D device creation, scene graph bootstrap, initial XIP load. |
@@ -45,12 +81,15 @@ When in doubt about an entry, run the address through Ghidra and compare. The po
 | 0x00031660 | `CDateObject::toUTCString` | `CDateObject::toUTCString` (date_node.cpp) | [Script VM](VM.md) | Formats date in ISO 8601 UTC form. |
 | 0x00031710 | `CDateObject::SetSystemClock` | `CDateObject::SetSystemClock` (date_node.cpp) | [Script VM](VM.md) | Writes the bound date back to the kernel via `NtSetSystemTime`. |
 | 0x00031b50 | `CFolder::Refresh` | `CFolder::Refresh` (file_ops.cpp) | [File Ops](FileOps.md) | Rescans a Folder node's directory and rebuilds its child File / Folder array. Driven by FindFirstFile / FindNextFile. |
+| 0x00032010 | `CFolder_sortByName` | `CFolder::sortByName` (file_ops.cpp) | [File Ops](FileOps.md) | FND-bound script method: re-sorts the folder's contents alphabetically by filename. |
 | 0x00032040 | `CStrObject::CStrObject` | `CStrObject::CStrObject` (xap_vm.cpp) | [Script VM](VM.md) | String object default constructor. |
 | 0x00032090 | `CStrObject::CStrObject` | `CStrObject::CStrObject` (xap_vm.cpp) | [Script VM](VM.md) | String object constructor from `wchar_t*` literal. |
 | 0x00032130 | `CStrObject::CStrObject` | `CStrObject::CStrObject` (xap_vm.cpp) | [Script VM](VM.md) | String object copy constructor. |
 | 0x000321f0 | `CNumObject::ToNum` | `CNumObject::ToNum` (xap_vm.cpp) | [Script VM](VM.md) | Number-object self coercion. Returns the bound `float` directly without conversion. |
 | 0x00032850 | `CStrObject::toLowerCase` | `CStrObject::toLowerCase` (xap_vm.cpp) | [Script VM](VM.md) | Lowercases the bound UTF-16 string in place using `_wcslwr`. |
 | 0x000328c0 | `CStrObject::toUpperCase` | `CStrObject::toUpperCase` (xap_vm.cpp) | [Script VM](VM.md) | Uppercases the bound UTF-16 string in place using `_wcsupr`. |
+| 0x00032af0 | `CMathClass_abs` | `CMathClass::abs` (math_node.cpp) | [Math](Math.md) | Script `Math.abs(x)`. Returns the magnitude of a float. |
+| 0x00033690 | `ExpandCString` | `ExpandCString` (string_util.cpp) | [Util](Util.md) | Resizes a `CString` buffer (the dashboard's growable wide-string container) to hold at least N additional characters. |
 | 0x00034d80 | `CFunctionCompiler::ParseExpression` | `CFunctionCompiler::ParseExpression` (xap_compile.cpp) | [Script VM](VM.md) | Recursive-descent expression parser. Drives the operator-precedence DOPER table to emit operator opcodes. |
 | 0x00034ea0 | `CFunctionCompiler::ParseIF` | `CFunctionCompiler::ParseIF` (xap_compile.cpp) | [Script VM](VM.md) | Compiles `if` / `if/else` to `opCond` + jump fixups. |
 | 0x00035170 | `CFunctionCompiler::ParseDO` | `CFunctionCompiler::ParseDO` (xap_compile.cpp) | [Script VM](VM.md) | Compiles loop constructs (`while`, `do/while`, `for`) to `opCond` + back-edge `opJump`. |
@@ -66,11 +105,18 @@ When in doubt about an entry, run the address through Ghidra and compare. The po
 | 0x00037800 | `CObject::Call` | `CObject::Call` (xap_vm.cpp) | [Script VM](VM.md) | Method dispatch. Looks up the FND entry by name on the receiver's class, dereferences arguments off the script stack, and invokes the native handler via signature-typed switch (`sig_vv`, `sig_iv`, etc.). |
 | 0x00038620 | `CRunner::ExecuteBuiltIn` | `CRunner::ExecuteBuiltIn` (xap_vm.cpp) | [Script VM](VM.md) | Global builtin dispatcher. Switches by argument-name length and `wcsncmp`s against `EnableInput`, `eval`, `launch`, `alert`, `log`, `DebugBreak`. |
 | 0x000390f0 | `CVec3Object::ToStr` | `CVec3Object::ToStr` (xap_vm.cpp) | [Script VM](VM.md) | Formats a 3-component vector as `"x y z"` for script string coercion. |
+| 0x0003a260 | `CDiscDrive_getTrackCount` | `CDiscDrive::getTrackCount` (disc_management.cpp) | [Disc](#disc) | Returns the number of audio tracks on the inserted CD. Used by the soundtrack import flow. |
 | 0x0003a680 | `CConfig::GetAVPackType` | `CConfig::GetAVPackType` (config.cpp) | [Settings](Settings.md) | Reads the AV pack type (composite, S-Video, component, HDMI-via-pack) from the kernel via `XGetAVPack`. |
 | 0x0003a740 | `CConfig::GetAVRegion` | `CConfig::GetAVRegion` (config.cpp) | [Settings](Settings.md) | Returns the configured analog video region (NTSC, PAL, etc.). |
 | 0x0003a7e0 | `CConfig::GetGameRegion` | `CConfig::GetGameRegion` (config.cpp) | [Settings](Settings.md) | Returns the console's region code (NA / JP / EU). Used to gate region-locked game launches in scripts. |
+| 0x0003a860 | `CConfig_GetPAL60Support` | `CConfig::GetPAL60Support` (config.cpp) | [Settings](Settings.md) | Returns whether the console / TV supports PAL60 mode. |
+| 0x0003ab30 | `CConfig_GetLaunchParameter1` | `CConfig::GetLaunchParameter1` (config.cpp) | [Settings](Settings.md) | Returns the first parameter passed by the previous title to the dashboard via `XSetLaunchData`. |
+| 0x0003af80 | `CConfig_GetVideoMode` | `CConfig::GetVideoMode` (config.cpp) | [Settings](Settings.md) | Returns the active video mode (480i/p, 720p, 1080i) selected in dashboard settings. |
 | 0x0003b2d0 | `CConfig::GetLaunchReason` | `CConfig::GetLaunchReason` (config.cpp) | [Settings](Settings.md) | Reports why the dashboard was booted (cold boot, returned-to-dash, eject, error). |
+| 0x0003b420 | `CConfig_GetFontVersion` | `CConfig::GetFontVersion` (config.cpp) | [Settings](Settings.md) | Returns the version of the loaded XTF font set. |
 | 0x0003b860 | `CConfig::GetXdashVersion` | `CConfig::GetXdashVersion` (config.cpp) | [Settings](Settings.md) | Returns the dashboard build version string. |
+| 0x0003b9d0 | `CConfig_GetDSTAllowed` | `CConfig::GetDSTAllowed` (config.cpp) | [Settings](Settings.md) | Returns whether daylight savings observance is enabled in the eeprom. |
+| 0x0003b9e0 | `CConfig_GetEthernetLinkStatus` | `CConfig::GetEthernetLinkStatus` (config.cpp) | [Settings](Settings.md) | Polls the ethernet PHY for link state. Drives the network-connected indicator on the settings panel. |
 | 0x0003baf0 | `CRecovery::RecoveryThread` | (reference only) | [App Shell](#app-shell) | Worker thread that performs the original factory-recovery wipe sequence. Theseus does not exercise this on modded hardware. |
 | 0x0003bf00 | `CSettingsFile::Save` | `CSettingsFile::Save` (settingsfile.cpp) | [Settings](Settings.md) | Serializes the in-memory settings tree to disk. Driven by the settings panel's "Save" action. |
 | 0x0003ca10 | `CTranslator::TranslateStripColon` | `CTranslator::TranslateStripColon` (locale_node.cpp) | [Locale](Locale.md) | Looks up a localized string by key, then strips a trailing `:` if present. Used for menu labels that need both punctuated and bare forms. |
@@ -79,43 +125,81 @@ When in doubt about an entry, run the address through Ghidra and compare. The po
 | 0x0003dec0 | `CXipFile::StartLoadThread` | `CXipFile::StartLoadThread` (xip_archive.cpp) | [XIP Archives](XIP.md) | Spawns a background loader thread that streams archive payload while the main thread continues. |
 | 0x0003e290 | `CXipFile::Find` | `CXipFile::Find` (xip_archive.cpp) | [XIP Archives](XIP.md) | Linear scan of the archive's TOC for a named entry. |
 | 0x0003e320 | `CXipFile::FindObject` | `CXipFile::FindObject` (xip_archive.cpp) | [XIP Archives](XIP.md) | Higher-level wrapper around `Find` that also resolves cross-archive references via the global XIP search list. |
-| 0x0003f420 | `CGameCopier::CreateDirectoryA` | `CGameCopier::CreateDirectoryA` (file_ops.cpp) | [File Ops](FileOps.md) | Wrapper around the kernel's CreateDirectory with progress-reporting hooks for the copy UI. |
-| 0x0003f700 | `CGameCopier::CopyFileA` | `CGameCopier::CopyFileA` (file_ops.cpp) | [File Ops](FileOps.md) | Buffered file copy with progress callback. Used by save-to-MU and game-copy flows. |
-| 0x0003f830 | `CGameCopier::DeleteFileA` | `CGameCopier::DeleteFileA` (file_ops.cpp) | [File Ops](FileOps.md) | DeleteFile wrapper. |
+| 0x0003f420 | `CGameCopier::CreateDirectoryA` | `CGameCopier::CreateDirectory` (file_ops.cpp) | [File Ops](FileOps.md) | Wrapper around the kernel's CreateDirectory with progress-reporting hooks for the copy UI. |
+| 0x0003f700 | `CGameCopier::CopyFileA` | `CGameCopier::CopyFile` (file_ops.cpp) | [File Ops](FileOps.md) | Buffered file copy with progress callback. Used by save-to-MU and game-copy flows. |
+| 0x0003f830 | `CGameCopier::DeleteFileA` | `CGameCopier::DeleteFile` (file_ops.cpp) | [File Ops](FileOps.md) | DeleteFile wrapper. |
 | 0x0003f8a0 | `CGameCopier::DeleteDirectory` | `CGameCopier::DeleteDirectory` (file_ops.cpp) | [File Ops](FileOps.md) | Recursive directory removal with progress callback. |
 | 0x000401b0 | `CScreenSaver::Advance` | `CScreenSaver::Advance` (settings_nodes.cpp) | [Settings](Settings.md) | Per-frame tick on the screensaver node. Counts down the idle timer and toggles the saver layer when threshold is reached. |
 | 0x000402a0 | `CScreenSaver::reset` | `CScreenSaver::reset` (settings_nodes.cpp) | [Settings](Settings.md) | Resets the idle timer to zero. Called on any input event. |
 | 0x00040320 | `CObject::ToNum` | `CObject::ToNum` (xap_vm.cpp) | [Script VM](VM.md) | Default numeric coercion for `CObject` subclasses. Subclasses override; base returns 0. |
 | 0x00040380 | `CObject::OnSetProperty` | `CObject::OnSetProperty` (xap_vm.cpp) | [Script VM](VM.md) | Property-write hook. Called after `opAssign` lands a value on a property; subclasses override to react to property changes. |
 | 0x00040990 | `CTimeDepNode::~CTimeDepNode` | `CTimeDepNode::~CTimeDepNode` (animation_nodes.cpp) | [Animation](AnimationNodes.md) | Destructor for time-dependent nodes (TimeSensor and friends). Unlinks from the time-dep list. |
+| 0x00040b70 | `CJoystick_EnableGlobalInput` | `CJoystick::EnableGlobalInput` (input.cpp) | [Input](#input) | Toggles dashboard-wide gamepad input. Used by modal scenes (alerts, panic) to suspend or restore controller events. |
 | 0x0004147c | `CObject::Deref` | `CObject::Deref` (xap_vm.cpp) | [Script VM](VM.md) | Dereferences a script value. For `CVarObject` resolves to the bound target; for primitive objects returns `this`. |
 | 0x000417f8 | `CTimeDepNode::OnSetProperty` | `CTimeDepNode::OnSetProperty` (animation_nodes.cpp) | [Animation](AnimationNodes.md) | Reacts to property writes on time-dep nodes. Re-registers the node with the time-dep list when its `enabled` toggles. |
 | 0x00041950 | `CObject::Assign` | `CObject::Assign` (xap_vm.cpp) | [Script VM](VM.md) | Default assignment handler. Called by `opAssign` when LHS is a script-visible property. |
+| 0x000419e0 | `CSettings_GetValue` | `CSettings::GetValue` (settings_nodes.cpp) | [Settings](Settings.md) | FND-bound script accessor: returns the value of a settings entry by name. |
 | 0x00041c90 | `CTimeSensor::Advance` | `CTimeSensor::Advance` (animation_nodes.cpp) | [Animation](AnimationNodes.md) | Per-frame tick. Computes fractional progress through the sensor's cycle interval and routes that into the bound interpolators. |
 | 0x00041d80 | `CObject::ToStr` | `CObject::ToStr` (xap_vm.cpp) | [Script VM](VM.md) | Default string coercion. Returns class name; subclasses override for meaningful output. |
 | 0x00041d90 | `CObject::_vtable_default` | `CObject::_vtable_default` (xap_vm.cpp) | [Script VM](VM.md) | The default vtable instance shared by base `CObject` instances. |
 | 0x00042740 | `CSavedGameGrid::GetSavedGameCount` | `CSavedGameGrid::GetSavedGameCount` (savegame_grid.cpp) | [Save Games](#save-games) | Returns the total count of saves visible across all attached storage devices, summed from the title array. |
+| 0x00042b40 | `GetXboxLiveAccountsCount_internal` | `GetXboxLiveAccountsCount_internal` (savegame_grid.cpp) | [Save Games](#save-games) | Helper that counts Xbox Live accounts visible on the current device. Backs the Live tab on the memory grid. |
 | 0x00042e40 | `CTitleArray::RemoveTitle` | `CTitleArray::RemoveTitle` (title_collection.cpp) | [Title Collection](TitleCollection.md) | Removes a title entry from the global title array (called when a title is uninstalled or the storage holding it is removed). |
+| 0x00043150 | `GetSavedGameID_internal` | `CTitleArray::GetSavedGameID` (title_collection.cpp) | [Title Collection](TitleCollection.md) | Returns the directory-name string for the Nth save under the Mth title. The grid-side `CSavedGameGrid::GetSavedGameID2` wrapper trampolines into this on the active device. |
 | 0x000432f0 | `CFont::Open` | `CFont::Open` (text.cpp) | [Text](Text.md) | Loads an XTF font file from a XIP and constructs the glyph cache. |
 | 0x00044240 | `CTitleArray::IsPublisherExists` | `CTitleArray::IsPublisherExists` (title_collection.cpp) | [Title Collection](TitleCollection.md) | Tests whether any title in the array shares a given publisher ID. Used by save-game grouping. |
+| 0x000463f0 | `CMusicCollection_GetSoundtrackCount` | `CMusicCollection::GetSoundtrackCount` (music_collection.cpp) | [Music](#music) | Returns the number of soundtracks the user has ripped. |
 | 0x00046660 | `CMusicCollection::GetUpdateString` | `CMusicCollection::GetUpdateString` (music_collection.cpp) | [Music](#music) | Builds the localized "Updating soundtracks..." progress string for the music panel. |
+| 0x00047520 | `~CSavedGameGrid` | `CSavedGameGrid::~CSavedGameGrid` (savegame_grid.cpp) | [Save Games](#save-games) | Destructor. Frees per-title cached data and unhooks the device-change watcher. |
+| 0x000476f0 | `CSavedGameGrid_GetTitleCount` | `CSavedGameGrid::GetTitleCount` (savegame_grid.cpp) | [Save Games](#save-games) | Returns the count of distinct titles that have at least one save / DLC / Live record on the current device. |
+| 0x000478d0 | `CSavedGameGrid_GetTitleID` | `CSavedGameGrid::GetTitleID` (savegame_grid.cpp) | [Save Games](#save-games) | Returns the 8-character hex title ID at a given grid index. |
 | 0x00047970 | `CSavedGameGrid::GetTitleName2` | `CSavedGameGrid::GetTitleName2` (savegame_grid.cpp) | [Save Games](#save-games) | Returns the display name for a title at a given grid index, falling back to the cached `TitleNames.ini` lookup if the live cert is unavailable. |
+| 0x00047ab0 | `CSavedGameGrid_GetTitleName` | `CSavedGameGrid::GetTitleName` (savegame_grid.cpp) | [Save Games](#save-games) | FND-bound title-name accessor exposed to scripts. Wraps `GetTitleName2`. |
 | 0x00048450 | `CSavedGameGrid::GetUpdateString` | `CSavedGameGrid::GetUpdateString` (savegame_grid.cpp) | [Save Games](#save-games) | Builds the "Updating saved games..." progress string for the memory panel. |
 | 0x00048690 | `CSavedGameGrid::RenderIconRow` | `CSavedGameGrid::RenderIconRow` (savegame_grid.cpp) | [Save Games](#save-games) | Renders one row of save tiles. Resolves icons from each title's UDATA `TitleImage.xbx` or DLC's `ContentMeta.xbx`. |
+| 0x00049590 | `CSavedGameGrid_selectUp` | `CSavedGameGrid::selectUp` (savegame_grid.cpp) | [Save Games](#save-games) | Up-arrow handler on the grid. Walks selection upward with row wrap. |
+| 0x00049650 | `CSavedGameGrid_selectDown` | `CSavedGameGrid::selectDown` (savegame_grid.cpp) | [Save Games](#save-games) | Down-arrow handler on the grid. |
+| 0x000497b0 | `CSavedGameGrid_selectRight` | `CSavedGameGrid::selectRight` (savegame_grid.cpp) | [Save Games](#save-games) | Right-arrow handler on the grid. Page-flips when at column boundary. |
+| 0x00049840 | `CSavedGameGrid_setSelImage` | `CSavedGameGrid::setSelImage` (savegame_grid.cpp) | [Save Games](#save-games) | Updates the selection-highlight texture for the currently focused tile. |
+| 0x00049940 | `CSavedGameGrid_FormatGridItemName` | `CSavedGameGrid::FormatGridItemName` (savegame_grid.cpp) | [Save Games](#save-games) | Formats the display name for any grid item (save / DLC / Live account). |
 | 0x00049ca0 | `CSavedGameGrid::FormatSavedGameTime` | `CSavedGameGrid::FormatSavedGameTime` (savegame_grid.cpp) | [Save Games](#save-games) | Formats a save's last-modified `FILETIME` into a localized date string for the tile subtitle. |
+| 0x00049eb0 | `CSavedGameGrid_GetXboxLiveAccountsCount` | `CSavedGameGrid::GetXboxLiveAccountsCount` (savegame_grid.cpp) | [Save Games](#save-games) | FND-bound version of the Live accounts count, exposed to scripts as a property on the grid. |
+| 0x00049ed0 | `CSavedGameGrid_GetGridItemCount` | `CSavedGameGrid::GetGridItemCount` (savegame_grid.cpp) | [Save Games](#save-games) | Total count of grid tiles for the current title (saves + DLC + Live accounts). Drives layout math. |
+| 0x00049f70 | `CSavedGameGrid_FormatGridItemSize` | `CSavedGameGrid::FormatGridItemSize` (savegame_grid.cpp) | [Save Games](#save-games) | Formats a grid item's storage footprint as a localized "X blocks" string. |
+| 0x0004a3e0 | `CSavedGameGrid_FormatTitleSize` | `CSavedGameGrid::FormatTitleSize` (savegame_grid.cpp) | [Save Games](#save-games) | Formats a title's total footprint (sum across all of its saves and DLC). |
+| 0x0004a700 | `CSavedGameGrid_GetSavedGamePath` | `CSavedGameGrid::GetSavedGamePath` (savegame_grid.cpp) | [Save Games](#save-games) | Returns the absolute path on the current device for the save at index N. |
+| 0x0004a820 | `CSavedGameGrid_FormatFreeBlocks` | `CSavedGameGrid::FormatFreeBlocks` (savegame_grid.cpp) | [Save Games](#save-games) | Formats the device's free-block count for the memory panel header. |
+| 0x0004a8d0 | `CSavedGameGrid_FormatTotalBlocks` | `CSavedGameGrid::FormatTotalBlocks` (savegame_grid.cpp) | [Save Games](#save-games) | Formats the device's total-block count for the memory panel header. |
+| 0x0004a9c0 | `CHardDrive_GetTotalBlocks` |  | [File Ops](FileOps.md) | Returns the total block count of the HDD partition currently selected by the memory panel. |
 | 0x0004b1d0 | `CSavedGameGrid::DeleteThread` | `CSavedGameGrid::DeleteThread` (savegame_grid.cpp) | [Save Games](#save-games) | Worker thread that performs the actual save-game delete (file removal + UDATA cleanup) off the UI thread. |
 | 0x0004b630 | `CSavedGameGrid::StartDelete` | `CSavedGameGrid::StartDelete` (savegame_grid.cpp) | [Save Games](#save-games) | Kicks off a save-game delete operation. The confirm submenu calls this; UI bug noted in known issues prevents the action from actually firing. |
+| 0x0004b6b0 | `CSavedGameGrid_CanCopy` | `CSavedGameGrid::CanCopy` (savegame_grid.cpp) | [Save Games](#save-games) | Returns true if the focused grid item is copyable (saves yes, DLC no, Live account stubbed). |
+| 0x0004b830 | `CSavedGameGrid_IsSavedGameSelected` | `CSavedGameGrid::IsSavedGameSelected` (savegame_grid.cpp) | [Save Games](#save-games) | Tests whether the focused tile is a save (versus DLC or Live account). Drives save-only menu actions. |
+| 0x0004ba90 | `CSavedGameGrid_IsXboxLiveAccountSelected` | `CSavedGameGrid::IsXboxLiveAccountSelected` (savegame_grid.cpp) | [Save Games](#save-games) | Tests whether the currently focused tile is a Live account row (versus a save or DLC row). Drives Live-specific menu actions. |
+| 0x0004bab0 | `CSavedGameGrid_StartXboxLiveAccountCopy` | `CSavedGameGrid::StartXboxLiveAccountCopy` (savegame_grid.cpp) | [Save Games](#save-games) | Original entry to the move-Live-account-between-MUs flow. Theseus stubs this to fire `OnCopyError` immediately; XAP UI is preserved. |
 | 0x0004bf50 | `CMemoryMonitor::UpdateValidDeviceFlags` | `CMemoryMonitor::UpdateValidDeviceFlags` (memory_monitor.cpp) | [Memory Monitor](#memory-monitor) | Polls `XGetDevices` and refreshes the bitmask of attached storage (HDD, MU0, MU1, MU2, MU3). |
 | 0x0004c3b0 | `CMemoryMonitor::GetTotalAndFreeBlocks` | `CMemoryMonitor::GetTotalAndFreeBlocks` (memory_monitor.cpp) | [Memory Monitor](#memory-monitor) | Returns total + free blocks on a given device for the bar-chart display. |
 | 0x0004c480 | `CMemoryMonitor::Advance` | `CMemoryMonitor::Advance` (memory_monitor.cpp) | [Memory Monitor](#memory-monitor) | Per-frame tick. Triggers re-enumeration on insert / eject events. |
+| 0x0004c840 | `CMemoryMonitor_FormatDeviceName` | `CMemoryMonitor::FormatDeviceName` (memory_monitor.cpp) | [Memory Monitor](#memory-monitor) | First format helper for a device's display label. Builds the bare-bones name without the user-set MU label. |
 | 0x0004c8c0 | `CMemoryMonitor::FormatDeviceName2` | `CMemoryMonitor::FormatDeviceName2` (memory_monitor.cpp) | [Memory Monitor](#memory-monitor) | Builds a device's display label including the user-set MU name when available. |
+| 0x0004c930 | `CMemoryMonitor_FormatTotalSlots` | `CMemoryMonitor::FormatTotalSlots` (memory_monitor.cpp) | [Memory Monitor](#memory-monitor) | Formats the device's total save-slot capacity (titles can claim per-save slots, distinct from raw blocks). |
+| 0x0004c9d0 | `CMemoryMonitor_FormatFreeSlots` | `CMemoryMonitor::FormatFreeSlots` (memory_monitor.cpp) | [Memory Monitor](#memory-monitor) | Formats the device's remaining save-slot count. |
+| 0x0004ca90 | `CMemoryMonitor_FormatFreeBlocks` | `CMemoryMonitor::FormatFreeBlocks` (memory_monitor.cpp) | [Memory Monitor](#memory-monitor) | Formats remaining free blocks for a single device. |
+| 0x0004cb90 | `CMemoryMonitor_GetTotalFreeBlocks` | `CMemoryMonitor::GetTotalFreeBlocks` (memory_monitor.cpp) | [Memory Monitor](#memory-monitor) | FND-bound: total free blocks across all attached devices. Drives the global "free space" readout. |
+| 0x0004cbc0 | `CMemoryMonitor_FormatTotalBlocks` | `CMemoryMonitor::FormatTotalBlocks` (memory_monitor.cpp) | [Memory Monitor](#memory-monitor) | Formats total blocks for a single device. |
 | 0x0004ccd0 | `CMemoryMonitor::SetMUName` | `CMemoryMonitor::SetMUName` (memory_monitor.cpp) | [Memory Monitor](#memory-monitor) | Renames a memory unit. Writes the new name to the unit's metadata block via the kernel. |
+| 0x0004cd10 | `CMemoryMonitor_FormatMemoryUnit` | `CMemoryMonitor::FormatMemoryUnit` (memory_monitor.cpp) | [Memory Monitor](#memory-monitor) | Formats an MU's display label with its user-set name. |
 | 0x0004dbb0 | `CTransform::CalcMatrix` | `CTransform::CalcMatrix` (scene_groups.cpp) | [Scene Groups](SceneGroups.md) | Composes translate / rotate / scale into the node's world matrix. Called when any TRS field changes. |
 | 0x0004e0f0 | `CTransform::SetRotation` | `CTransform::SetRotation` (scene_groups.cpp) | [Scene Groups](SceneGroups.md) | Sets the rotation as axis-angle. Marks the matrix dirty for next CalcMatrix. |
 | 0x0004e4d0 | `CInline::Init` | `CInline::Init` (scene_groups.cpp) | [Scene Groups](SceneGroups.md) | Inline-node init: opens the referenced XIP / XAP and inserts its root into the local scene graph. |
 | 0x0004e740 | `CInline::Advance` | `CInline::Advance` (scene_groups.cpp) | [Scene Groups](SceneGroups.md) | Per-frame tick. If the load thread completed, swaps the placeholder for the loaded sub-tree. |
 | 0x00053ed0 | `CFont::LoadGlyph` | `CFont::LoadGlyph` (text.cpp) | [Text](Text.md) | Decompresses a single glyph bitmap from the XTF cache table. |
+| 0x0005acb0 | `CKeyboard_CursorRight` | `CKeyboard::CursorRight` (keyboard_node.cpp) | [Keyboard](Keyboard.md) | Right-arrow handler on the on-screen keyboard. Wraps to row start when at row end. |
+| 0x0005b340 | `CKeyboard_activate` | `CKeyboard::activate` (keyboard_node.cpp) | [Keyboard](Keyboard.md) | Commits the highlighted key. Handles regular keys, layout switches (shift/sym), and the OK / cancel softkeys. |
 | 0x0005b630 | `CKeyboard::Backspace` | `CKeyboard::Backspace` (keyboard_node.cpp) | [Keyboard](Keyboard.md) | Handles backspace on the on-screen keyboard. Removes the last character (with surrogate pair awareness). |
+| 0x0005b700 | `CKeyboard_CursorLeft` | `CKeyboard::CursorLeft` (keyboard_node.cpp) | [Keyboard](Keyboard.md) | Left-arrow handler. Wraps to row end when at row start. |
+| 0x0005b740 | `CKeyboard_CursorRight` | `CKeyboard::CursorRight` (keyboard_node.cpp) | [Keyboard](Keyboard.md) | Right-arrow handler (alternate FND-bound entry). |
+| 0x0005b780 | `CKeyboard_Shift` | `CKeyboard::Shift` (keyboard_node.cpp) | [Keyboard](Keyboard.md) | Toggles the shift / caps layer of the on-screen keyboard. |
 | 0x0005d200 | `CLevel::Deactivate` | `CLevel::Deactivate` (scene_groups.cpp) | [Scene Groups](SceneGroups.md) | Marks a Level node inactive. Pauses its time-dep children and skips it during render traversal. |
 | 0x0005d300 | `CPositionInterpolator::Interpolate` | `CPositionInterpolator::Interpolate` (animation_nodes.cpp) | [Animation](AnimationNodes.md) | Linear interpolation between key positions based on the bound TimeSensor's fraction. |
 | 0x0005d5a0 | `COrientationInterpolator::Interpolate` | `COrientationInterpolator::Interpolate` (animation_nodes.cpp) | [Animation](AnimationNodes.md) | Spherical-linear interpolation between key axis-angle rotations. |
@@ -136,8 +220,23 @@ When in doubt about an entry, run the address through Ghidra and compare. The po
 | 0x00064ec0 | `CNtIoctlCdromService::DeviceIoControl` | `CNtIoctlCdromService::DeviceIoControl` (ntiosvc.cpp) | [NtIoSvc](NtIoSvc.md) | Routes IOCTLs to the CD-ROM device driver. The dashboard talks to the disc through this; Theseus's reconstruction reuses it for ISO/CCI mount via Hermes. |
 | 0x00065150 | `CCDDAStreamer::CCDDAStreamer` | (reference only) | [Audio](AudioSystem.md) | CD digital audio streamer constructor. Used by the original soundtrack rip flow; the rip-CD-to-disk feature is not yet implemented in Theseus. |
 | 0x000676c0 | `CDVDPlayer::CheckUserOp` | (reference only) | DVD Playback | Checks whether a given DVD user operation (next chapter, scan, menu) is permitted by the disc's prohibited-operations mask. The full DVD playback chain was cut from Theseus; the desktop build uses libmpv instead. |
+| 0x00068d60 | `XOnlineGetUsers_wrapper` | `XOnlineGetUsers_wrapper` (live_accounts.cpp) | [Live Accounts](#live-accounts) | Thin wrapper around the kernel `XOnlineGetUsers` import. Centralizes argument marshalling for the dashboard's Live-user enumeration paths. |
+| 0x00069470 | `CLiveAccounts_LoadFromHD_internal` | `CLiveAccounts::LoadFromHD` (live_accounts.cpp) | [Live Accounts](#live-accounts) | Loads all Xbox Live accounts stored on the HDD via `_XOnlineGetUsersFromHD`. Populates the global `g_Users[]` array. |
+| 0x00069730 | `CLiveAccounts_GetNumberOfAccounts` | `CLiveAccounts::GetNumberOfAccounts` (live_accounts.cpp) | [Live Accounts](#live-accounts) | Returns the count of accounts loaded by `LoadFromHD`. |
+| 0x00069750 | `CLiveAccounts_GetAccountName` | `CLiveAccounts::GetAccountName` (live_accounts.cpp) | [Live Accounts](#live-accounts) | Returns gamertag for the Nth loaded account. |
+| 0x000697f0 | `CLiveAccounts_GetAccountName` | `CLiveAccounts::GetAccountName` (live_accounts.cpp) | [Live Accounts](#live-accounts) | Overload of `GetAccountName`. Differs by signature; both write the same gamertag string. |
+| 0x000698b0 | `CLiveAccounts_IsPasswordEnabled` | `CLiveAccounts::IsPasswordEnabled` (live_accounts.cpp) | [Live Accounts](#live-accounts) | Tests whether the bound account requires a passcode at logon. |
+| 0x000698e0 | `CLiveAccounts_VerifyPassword` | `CLiveAccounts::VerifyPassword` (live_accounts.cpp) | [Live Accounts](#live-accounts) | Compares an entered passcode against the account's stored hash. |
+| 0x00069ae0 | `CLiveAccounts_Logoff` | `CLiveAccounts::Logoff` (live_accounts.cpp) | [Live Accounts](#live-accounts) | Logs out the currently signed-in Live user and clears in-memory credentials. |
+| 0x0006a000 | `CLiveAccounts_IsBackFromEntryPoint` | `CLiveAccounts::IsBackFromEntryPoint` (live_accounts.cpp) | [Live Accounts](#live-accounts) | Returns whether the dashboard re-entered the Live flow from a title (post-game return) versus a fresh boot. |
+| 0x0006a030 | `CLiveAccounts_GetLastLogonUser` | `CLiveAccounts::GetLastLogonUser` (live_accounts.cpp) | [Live Accounts](#live-accounts) | Returns the index of the account that last logged on. Used to default the user selector. |
+| 0x0006a0d0 | `CLiveAccounts_IsPasswordVerified` | `CLiveAccounts::IsPasswordVerified` (live_accounts.cpp) | [Live Accounts](#live-accounts) | Returns whether the bound account has a verified passcode in this session (gates re-verification). |
+| 0x0006a530 | `CLiveAccounts_GetResult` | `CLiveAccounts::GetResult` (live_accounts.cpp) | [Live Accounts](#live-accounts) | Returns the numeric result code from the most recent Live operation (logon, friends fetch, etc.). |
+| 0x0006a590 | `CLiveAccounts_ClearMOTDCache` | `CLiveAccounts::ClearMOTDCache` (live_accounts.cpp) | [Live Accounts](#live-accounts) | Invalidates the cached "message of the day" so the next Live update re-fetches it. |
 | 0x0006e6cb | `CFilePump::GetData` | `CFilePump::GetData` (audio_system.cpp) | [Audio](AudioSystem.md) | Reads the next chunk of compressed data from the file pump's source file. Called by the decoder when its input is empty. |
 | 0x0007967f | `CXAppNode::GetTextureSurface` | `CXAppNode::GetTextureSurface` (main.cpp) | [Render](#render) | Returns the underlying D3D `IDirect3DSurface8` for a node's bound texture. Used by render-to-texture nodes. |
+| 0x000cfe09 | `CLayout::GetRadius` | `CLayout::GetRadius` (scene_groups.cpp) | [Scene Groups](SceneGroups.md) | Returns the layout's circular radius. Inlined in many .text use sites; this is the FND-bound wrapper. |
+| 0x0011bec2 | `CXo_XOnlineLogon` | `CXo::XOnlineLogon` (xbox_live.cpp) | [Live Accounts](#live-accounts) | Theseus-side facade over `XOnlineLogon`. Marshals the dashboard's account record into the kernel call's parameter shape. |
 
 ## Coverage status
 
@@ -146,26 +245,30 @@ The seed and first expansion cover the application shell, script VM, scene graph
 | Subsystem | Doc | Coverage |
 |-----------|-----|----------|
 | Script VM | [VM.md](VM.md) | 35 functions |
-| Scene Graph | [Node.md](Node.md) | 2 functions (more class-table entries pending) |
+| Scene Graph | [Node.md](Node.md) | 2 functions + 32 class-table registrations |
 | XIP Archives | [XIP.md](XIP.md) | 5 functions |
 | Animation Nodes | [AnimationNodes.md](AnimationNodes.md) | 4 functions |
 | Audio System | [AudioSystem.md](AudioSystem.md) | 12 functions |
 | Camera | [Camera.md](Camera.md) | not yet started |
-| Date / Math | [Date.md](Date.md), [Math.md](Math.md) | 7 functions (Date) |
-| File Operations | [FileOps.md](FileOps.md) | 5 functions |
-| Keyboard | [Keyboard.md](Keyboard.md) | 1 function (more pending) |
+| Date | [Date.md](Date.md) | 7 functions |
+| Math | [Math.md](Math.md) | 5 functions |
+| File Operations | [FileOps.md](FileOps.md) | 7 functions |
+| Disc | (no doc yet, narrative TODO) | 1 function |
+| Keyboard | [Keyboard.md](Keyboard.md) | 6 functions |
 | Locale | (no doc yet, narrative TODO) | 1 function |
 | NtIoSvc | [NtIoSvc.md](NtIoSvc.md) | 1 function |
-| Scene Groups | [SceneGroups.md](SceneGroups.md) | 5 functions |
-| Settings | [Settings.md](Settings.md) | 7 functions |
+| Scene Groups | [SceneGroups.md](SceneGroups.md) | 6 functions |
+| Settings | [Settings.md](Settings.md) | 14 functions |
 | Shape Render | [ShapeRender.md](ShapeRender.md) | not yet started |
 | Text | [Text.md](Text.md) | 2 functions |
-| Title Collection | [TitleCollection.md](TitleCollection.md) | 2 functions |
+| Title Collection | [TitleCollection.md](TitleCollection.md) | 2 functions named in Ghidra; more labeling pending |
 | TMAP System | [TmapSystem.md](TmapSystem.md) | not yet started |
-| Util | [Util.md](Util.md) | not yet started |
-| Save Games | (no doc yet, narrative TODO) | 8 functions |
-| Memory Monitor | (no doc yet, narrative TODO) | 5 functions |
-| Music Collection | (no doc yet, narrative TODO) | 1 function |
+| Util | [Util.md](Util.md) | 1 function |
+| Save Games | (no doc yet, narrative TODO) | 29 functions |
+| Live Accounts | (no doc yet, narrative TODO) | 13 functions |
+| Input | (no doc yet, narrative TODO) | 1 function |
+| Memory Monitor | (no doc yet, narrative TODO) | 12 functions |
+| Music Collection | (no doc yet, narrative TODO) | 2 functions named in Ghidra; more labeling pending |
 | Render | (no doc yet, narrative TODO) | 1 function |
 | App Shell | (no doc yet, narrative TODO) | 9 functions |
 | Asset Loader | [AssetLoader.md](AssetLoader.md) (narrative TODO) | 2 functions |

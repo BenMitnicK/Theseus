@@ -137,6 +137,21 @@ public:
 
 	void Play()
 	{
+		// If paused, resume from current position rather than restart.
+		if (m_transportMode == 2) {
+			if (IsCdUrl(m_loadedUrl)) {
+				CdAudio_Resume();
+			} else if (m_isStreaming) {
+				DashAudio_ResumeMusic();
+			} else if (m_channel >= 0) {
+				DashAudio_ResumeChannel(m_channel);
+			}
+			m_transportMode = 1;
+			CallFunction(this, _T("onPlay"));
+			CallFunction(this, _T("OnTransportModeChanged"));
+			return;
+		}
+
 		LoadIfNeeded();
 
 		if (IsCdUrl(m_loadedUrl)) {
@@ -207,6 +222,17 @@ public:
 
 	void Pause()
 	{
+		if (m_transportMode == 2) {
+			// Toggle: resume if already paused
+			if (IsCdUrl(m_loadedUrl))      CdAudio_Resume();
+			else if (m_isStreaming)         DashAudio_ResumeMusic();
+			else if (m_channel >= 0)        DashAudio_ResumeChannel(m_channel);
+			m_transportMode = 1;
+			CallFunction(this, _T("onPlay"));
+			CallFunction(this, _T("OnTransportModeChanged"));
+			return;
+		}
+
 		if (m_transportMode != 1) return;
 
 		if (IsCdUrl(m_loadedUrl)) {
@@ -1198,7 +1224,7 @@ public:
 	}
 
 	CStrObject* FormatTrackTime(int track) {
-		int dur = CdAudio_GetTrackDurationSeconds(track);
+		int dur = CdAudio_GetTrackDurationSeconds(track + 1);  // script passes 0-based index
 		char buf[16];
 		snprintf(buf, sizeof(buf), "%d:%02d", dur / 60, dur % 60);
 		return new CStrObject(buf);

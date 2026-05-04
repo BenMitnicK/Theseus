@@ -280,8 +280,8 @@ jobs:
            cat > "$NOTES_FILE" <<'EOF'
            # UIX Desktop builds
 
-           Built from the latest Theseus commits. (as of $TS)
-
+           Built from the latest Theseus commits.
+           
            ## Versions
            - `UIX-Desktop-Win` - Reverse Engineered Xbox Dashboard (Windows Build)
            - `UIX-Desktop-MacOS` - Reverse Engineered Xbox Dashboard (MacOS Arm build)

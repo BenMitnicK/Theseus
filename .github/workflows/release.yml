@@ -9,6 +9,11 @@ on:
         description: 'Tag to release as (e.g. v0.5.0)'
         required: true
 
+# Required so softprops/action-gh-release can create / update the
+# release and upload assets via the workflow's GITHUB_TOKEN.
+permissions:
+  contents: write
+
 # Per-platform: build, package binary + xboxfs + runtime libs into a
 # platform-named archive, attach to the GitHub Release.
 

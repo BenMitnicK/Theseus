@@ -70,10 +70,12 @@ void Launcher_Build(const char* spec, const char* typeHint,
 // Forward decls -- each module's RegisterFoo lives in its own .cpp.
 extern void Launcher_RegisterShell();
 extern void Launcher_RegisterUrl();
+extern void Launcher_RegisterXemu();
 
 void Launchers_RegisterAll() {
 	// Order matters only for the implicit registration ordering, not
 	// for Claims (priority sorting handles that).
 	Launcher_RegisterUrl();
+	Launcher_RegisterXemu();
 	Launcher_RegisterShell();
 }

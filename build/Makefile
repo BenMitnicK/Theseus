@@ -627,6 +627,7 @@ DESKTOP_SRCS_PLATFORM = \
 	$(THESEUS_SRC)/desktop/launchers/registry.cpp \
 	$(THESEUS_SRC)/desktop/launchers/shell.cpp \
 	$(THESEUS_SRC)/desktop/launchers/url.cpp \
+	$(THESEUS_SRC)/desktop/launchers/xemu.cpp \
 	$(THESEUS_SRC)/desktop/title_sanitize.cpp \
 	$(THESEUS_SRC)/desktop/udata_synth.cpp \
 	$(THESEUS_SRC)/xbox/modchip.cpp \

@@ -489,7 +489,10 @@ inline BOOL FindClose(HANDLE h) {
 
 // Simple Xbox path translation for stubs below (full version in xboxfs.h).
 // Converts "C:\..." -> "Configs/...", "Q:\..." -> "Data/...",
-// "E:\..." -> "Library/..."; other drives unchanged (caller's stat will fail).
+// "E:\..." -> "Library/...". For unknown drives (F:, G:, R:, ...) returns
+// an empty string so callers' stat/mkdir/fopen all fail predictably; do
+// NOT pass through unchanged, since Preloader_Mkdirp would then create
+// a literal "F:" directory on disk.
 inline const char* _StubTranslatePath(const char* xboxPath) {
     static char s_stubBuf[512];
     if (!xboxPath) return xboxPath;
@@ -504,6 +507,9 @@ inline const char* _StubTranslatePath(const char* xboxPath) {
                 return s_stubBuf;
             }
         }
+        // Drive letter present but unrecognized -- fail safe.
+        s_stubBuf[0] = '\0';
+        return s_stubBuf;
     }
     return xboxPath;
 }

@@ -190,11 +190,16 @@ inline const char* XboxFS_TranslatePath(const char* xboxPath) {
             }
 
             if (!prefix) {
-                // F:, G:, R:, etc. -- no analog on desktop. Fall through
-                // to "no drive letter" handling so the caller's stat() fails
-                // naturally and iteration code (launcher.xap walking E,F,G)
-                // produces an empty result for the missing drives.
-                goto no_drive;
+                // F:, G:, H:, I:, R:, etc. -- no analog on desktop. Return
+                // an empty string so the caller's stat()/opendir()/fopen()/
+                // mkdir() all fail predictably. Critically, do NOT fall
+                // through to the "pass through unchanged" branch -- that
+                // would hand callers like Preloader_Mkdirp a literal
+                // "F:/Foo/Bar" path, and mkdir would happily create a
+                // directory named "F:" (which Finder helpfully renders as
+                // "F/", confusing everyone).
+                s_buf[0] = '\0';
+                return s_buf;
             }
 
             snprintf(s_buf, sizeof(s_buf), "%s/%s", prefix, rest);

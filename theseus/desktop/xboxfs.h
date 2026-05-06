@@ -152,6 +152,42 @@ inline const char* XboxFS_TranslatePath(const char* xboxPath) {
         return s_buf;
     }
 
+    // Device-path form: "\Device\Harddisk0\PartitionN\..." Used by the
+    // XAP `launch()` builtin to address Xbox HDD partitions. Map the
+    // partition number back to a drive letter so the rest of this
+    // function's drive-letter logic handles it. Only Partition1 (E)
+    // and Partition2 (C) actually exist on desktop; everything else
+    // (6/7/8/9 = F/G/R/S) is dead-letter.
+    {
+        static const char kDevPrefix[] = "\\Device\\Harddisk0\\Partition";
+        const size_t kDevPrefixLen = sizeof(kDevPrefix) - 1;
+        if (strncmp(xboxPath, kDevPrefix, kDevPrefixLen) == 0) {
+            const char* p = xboxPath + kDevPrefixLen;
+            int partNum = 0;
+            while (*p >= '0' && *p <= '9') { partNum = partNum * 10 + (*p - '0'); p++; }
+            if (*p == '\\' || *p == '/') p++;
+            char drive = 0;
+            switch (partNum) {
+                case 1: drive = 'E'; break;
+                case 2: drive = 'C'; break;
+                case 6: drive = 'F'; break;
+                case 7: drive = 'G'; break;
+                case 8: drive = 'R'; break;
+                case 9: drive = 'S'; break;
+                default: drive = 0; break;
+            }
+            const char* prefix = drive ? XboxFS_DriveToPrefix(drive) : 0;
+            if (!prefix) {
+                s_buf[0] = '\0';
+                return s_buf;
+            }
+            snprintf(s_buf, sizeof(s_buf), "%s/%s", prefix, p);
+            for (char* q = s_buf; *q; q++) if (*q == '\\') *q = '/';
+            XboxFS_ResolveCaseInsensitive(s_buf, sizeof(s_buf));
+            return s_buf;
+        }
+    }
+
     // Look for drive letter pattern: "X:\" or "X:/" or "WORD:\".
     const char* colon = strchr(xboxPath, ':');
     if (colon && (colon[1] == '\\' || colon[1] == '/')) {

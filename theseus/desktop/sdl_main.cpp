@@ -307,7 +307,7 @@ extern void Keyboard_InsertText(CKeyboard* pKb, const char* sz);
 extern void Keyboard_HandleKey(CKeyboard* pKb, int sdlKey);
 
 void LoadDesktopSettings() {
-    FILE* fp = fopen("xboxfs/C/UIX Configs/desktop.ini", "r");
+    FILE* fp = fopen("Configs/desktop.ini", "r");
     if (!fp) return;
     char line[1024];
     while (fgets(line, sizeof(line), fp)) {
@@ -361,10 +361,10 @@ void LoadDesktopSettings() {
 void SaveDesktopSettings() {
     // Ensure directory exists
     struct stat st;
-    if (stat("xboxfs/C/UIX Configs", &st) != 0) {
-        system("mkdir -p \"xboxfs/C/UIX Configs\"");
+    if (stat("Configs", &st) != 0) {
+        system("mkdir -p \"Configs\"");
     }
-    FILE* fp = fopen("xboxfs/C/UIX Configs/desktop.ini", "w");
+    FILE* fp = fopen("Configs/desktop.ini", "w");
     if (!fp) return;
     fprintf(fp, "[Desktop]\n");
     fprintf(fp, "XemuPath=%s\n", s_xemuPath);
@@ -945,7 +945,7 @@ int main(int argc, char* argv[]) {
     // isn't the focus there) and toggleable via Settings > Show Boot Animation.
     if (g_bShowBootAnimation && !g_extractedMode) {
         BootAnim_PlayAndWait(g_pSDLWindow,
-            "xboxfs/C/UIX Configs/xbox_boot.mp4");
+            "Configs/xbox_boot.mp4");
     }
 
     // Initialize app globals
@@ -979,7 +979,7 @@ int main(int argc, char* argv[]) {
     // In development mode: open editor and load extracted XAPs
     if (g_extractedMode) {
         g_xapEditorOpen = true;
-        XapEditor_LoadFile("xboxfs/Q/Xips/default/default.xap");
+        XapEditor_LoadFile("Data/Xips/default/default.xap");
         if (XapEditor_HasBuffer())
             ReloadSceneFromEditor();
     }
@@ -1104,7 +1104,7 @@ int main(int argc, char* argv[]) {
                     if (event.key.keysym.sym == SDLK_F2) {
                         g_xapEditorOpen = !g_xapEditorOpen;
                         if (g_xapEditorOpen && !XapEditor_HasBuffer())
-                            XapEditor_LoadFile("xboxfs/Q/Xips/default/default.xap");
+                            XapEditor_LoadFile("Data/Xips/default/default.xap");
                     }
                     if (event.key.keysym.sym == SDLK_F3) {
                         g_titleMakerOpen = !g_titleMakerOpen;

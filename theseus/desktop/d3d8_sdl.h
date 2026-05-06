@@ -2529,12 +2529,15 @@ inline HRESULT D3DXCreateTextureFromFileA(IDirect3DDevice8* dev, const char* pat
     // Try to load the file from the xboxfs-mapped path
     FILE* f = fopen(path, "rb");
     if (!f) {
-        // Try xboxfs mapping (Q:\path -> xboxfs/Q/path)
+        // Try drive remap (Q:\path -> Data/path, etc.).
         char mapped[1024];
         if (path[0] && path[1] == ':' && (path[2] == '\\' || path[2] == '/')) {
-            snprintf(mapped, sizeof(mapped), "xboxfs/%c/%s", path[0], path + 3);
-            for (char* p = mapped; *p; p++) if (*p == '\\') *p = '/';
-            f = fopen(mapped, "rb");
+            const char* prefix = XboxFS_DriveToPrefix(path[0]);
+            if (prefix) {
+                snprintf(mapped, sizeof(mapped), "%s/%s", prefix, path + 3);
+                for (char* p = mapped; *p; p++) if (*p == '\\') *p = '/';
+                f = fopen(mapped, "rb");
+            }
         }
     }
     if (!f) return E_FAIL;

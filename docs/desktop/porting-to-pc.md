@@ -27,7 +27,7 @@ The migration from "everything under `desktop/`" to "shared canonical source whe
 
 The port is a mix of techniques depending on what each subsystem required:
 
-- **Virtualization**: The filesystem layer intercepts Win32 file I/O calls and redirects them to a local directory structure. The engine calls `CreateFile("Q:\\Xips\\default.xip")` and gets back a valid handle without knowing it's actually opening `./xboxfs/Q/Xips/default.xip` via `fopen()`.
+- **Virtualization**: The filesystem layer intercepts Win32 file I/O calls and redirects them to a local directory structure. The engine calls `CreateFile("Q:\\Xips\\default.xip")` and gets back a valid handle without knowing it's actually opening `./Data/Xips/default.xip` via `fopen()`.
 - **Reimplementation**: D3D8 rendering was completely rebuilt on top of OpenGL. The engine calls the same `IDirect3DDevice8` interface, but every method is backed by OpenGL state and GLSL shaders. Audio was fully replaced with SDL_mixer.
 - **Type compatibility**: Win32 types (`DWORD`, `HANDLE`, `BYTE`, etc.) are typedef'd to standard C types so the code compiles on non-Windows platforms.
 - **Stubbing**: Xbox-only subsystems (Xbox Live, hardware management, etc.) are replaced with no-op stubs that satisfy the linker. Node types referenced by XAP scripts but irrelevant on desktop get stub classes so the script VM doesn't fail on unknown types.
@@ -37,7 +37,7 @@ The port is a mix of techniques depending on what each subsystem required:
 Xbox Code:  CreateFile("Q:\\Xips\\default.xip", ...)
                 |
                 v
-Platform Layer: XboxFS_CreateFileA() translates path to "./xboxfs/Q/Xips/default.xip"
+Platform Layer: XboxFS_CreateFileA() translates path to "./Data/Xips/default.xip"
                 Opens with fopen(), returns a HANDLE-compatible wrapper
                 |
                 v
@@ -82,37 +82,38 @@ On Windows, most of these types already exist (they're the real Win32 types). Th
 
 ### xboxfs.h: The Virtual Filesystem
 
-The Theseus codebase uses drive letter mappings from the modded Xbox ecosystem: `C:\`, `E:\`, `Q:\Xips\`, etc. (These are scene conventions, not how retail Xbox addresses partitions internally.) On desktop, these map to a local directory structure:
+The Theseus codebase uses drive letter mappings from the modded Xbox ecosystem: `C:\`, `E:\`, `Q:\Xips\`, etc. (These are scene conventions, not how retail Xbox addresses partitions internally.) On desktop, these collapse to three top-level folders that live next to the binary:
 
 ```
-xboxfs/
-  C/
-    version
-    UIX Configs/
-      config.ini
-      games.ini
-  Q/
-    Xips/
-      default.xip
-      games.xip
-      settings.xip
-      ...
-    Skins/
-      Stock/
-    Fonts/
-      xbox.xtf
-      tahoma.ttf
-    System/
-      config.ini
-      desktop.ini
-  E/
-    Games/
-    UDATA/
+Configs/         (Xbox C:\UIX Configs\)
+  version
+  config.ini
+  games.ini
+  desktop.ini
+Data/            (Xbox Q:\)
+  Xips/
+    default.xip
+    games.xip
+    settings.xip
+    ...
+  Skins/
+    Stock/
+  Fonts/
+    xbox.xtf
+    tahoma.ttf
+  System/
+Library/         (Xbox E:\)
+  Games/
+  UDATA/
+  Applications/
+  Emulators/
 ```
+
+`F:\`, `G:\`, `R:\` (extra HDD partitions on real Xbox) silently fail to resolve on desktop -- there's only one library partition. XAP scripts that walk multiple drives just see empty results for the missing ones, so no duplicates.
 
 `xboxfs.h` provides:
 
-1. **Path translation**: `XboxFS_TranslatePath("Q:\\Xips\\default.xip")` returns `"xboxfs/Q/Xips/default.xip"`
+1. **Path translation**: `XboxFS_TranslatePath("Q:\\Xips\\default.xip")` returns `"Data/Xips/default.xip"`
 2. **Case-insensitive lookup**: Xbox filenames are case-insensitive (NTFS). macOS is too (by default), but Linux is case-sensitive. The filesystem layer does case-insensitive directory scanning when a direct match fails.
 3. **API interception**: `#define CreateFile CreateFileA` and then `#define CreateFileA XboxFS_CreateFileA`, so every file open in the Xbox code goes through the virtual filesystem without changing a single line of Xbox source.
 4. **FATX fallback**: For UDATA/TDATA paths, the filesystem can read directly from a qcow2 Xbox HDD image via the FATX reader.
@@ -144,7 +145,7 @@ The XAP scripts reference node types that don't exist natively on desktop. If th
 - `CAudioClip`: sound effects and music via SDL_mixer, with Xbox IMA ADPCM decoding
 - `CSavedGameGrid`: enumerates real Xbox save data from xboxfs and qcow2 FATX images, renders the memory browser with scrolling title pods and save icons
 - `CDVDPlayer`: full media playback via libmpv with transport controls, chapter navigation, A-B loop, frame stepping, zoom, and CRT post-processing
-- `CMusicCollection`: soundtrack browsing from `xboxfs/Q/Music/`
+- `CMusicCollection`: soundtrack browsing from `Data/Music/`
 - `CAudioVisualizer`: FFT visualization from PCM audio capture
 - `CMemoryMonitor`: reports real host memory
 - `CHardDrive`: drive info with virtual game library integration

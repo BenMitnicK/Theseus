@@ -342,7 +342,7 @@ void RenderSettingsWindow() {
                 DashMusic_GetSoundtrackCount(),
                 DashMusic_GetSoundtrackCount() == 1 ? "" : "s");
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 130);
-            ImGui::InputTextWithHint("##musicroot", "xboxfs/Q/Music",
+            ImGui::InputTextWithHint("##musicroot", "Data/Music",
                 g_musicRoot, sizeof(g_musicRoot));
             ImGui::SameLine();
             if (ImGui::Button("Refresh##music")) {
@@ -459,7 +459,7 @@ void RenderAboutWindow() {
 
     static char s_version[64] = "";
     if (!s_version[0]) {
-        FILE* vf = fopen("xboxfs/C/version", "r");
+        FILE* vf = fopen("Configs/version", "r");
         if (vf) {
             char line[128];
             while (fgets(line, sizeof(line), vf)) {

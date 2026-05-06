@@ -215,7 +215,7 @@ void LaunchOverlay_Reset()
 	s_pendingSpec[0] = 0;
 }
 
-// Lazy-load the Xbox logo PNG (xboxfs/C/UIX Configs/xboxlogo.png) into a
+// Lazy-load the Xbox logo PNG (Configs/xboxlogo.png) into a
 // GL texture and cache the handle for the rest of the process. The PNG is
 // pre-decoded from Stock's xboxlogo.xbx via OXDK xbx-convert and lives in
 // the desktop-only UIX Configs directory; loading raw PNG with stb_image
@@ -230,7 +230,7 @@ unsigned int LaunchOverlay_LogoGLTex(int* outW, int* outH)
 
 	if (!s_loadAttempted) {
 		s_loadAttempted = true;
-		const char* path = "xboxfs/C/UIX Configs/xboxlogo.png";
+		const char* path = "Configs/xboxlogo.png";
 		int w = 0, h = 0, ch = 0;
 		unsigned char* pixels = stbi_load(path, &w, &h, &ch, 4);
 		if (pixels) {
@@ -312,8 +312,11 @@ void DesktopLaunchGame(const char* spec)
 // source, default.uixshortcut files are the fallback.
 // ============================================================================
 
-static const struct { int partition; const char* drive; } s_partitionDrives[] = {
-	{ 1, "E" }, { 2, "C" }, { 6, "F" }, { 7, "G" }, { 8, "R" }, { 9, "S" }
+// Partition -> drive letter map (Xbox-side; partitions 6/7/8/9 are
+// the optional F/G/R/S drives that don't exist on desktop and resolve
+// to NULL via XboxFS_DriveToPrefix).
+static const struct { int partition; char drive; } s_partitionDrives[] = {
+	{ 1, 'E' }, { 2, 'C' }, { 6, 'F' }, { 7, 'G' }, { 8, 'R' }, { 9, 'S' }
 };
 
 static bool ConvertXboxPathToLocal(const char* xboxPath, char* outBuf, size_t outSize)
@@ -324,11 +327,10 @@ static bool ConvertXboxPathToLocal(const char* xboxPath, char* outBuf, size_t ou
 	const char* colon = strchr(xboxPath, ':');
 	if (colon && (colon[1] == '\\' || colon[1] == '/')) {
 		int driveLen = (int)(colon - xboxPath);
-		if (driveLen > 0 && driveLen < 32) {
-			char drive[32];
-			memcpy(drive, xboxPath, driveLen);
-			drive[driveLen] = '\0';
-			snprintf(outBuf, outSize, "xboxfs/%s/%s", drive, colon + 2);
+		if (driveLen == 1) {
+			const char* prefix = XboxFS_DriveToPrefix(xboxPath[0]);
+			if (!prefix) return false;
+			snprintf(outBuf, outSize, "%s/%s", prefix, colon + 2);
 			for (char* p = outBuf; *p; p++) if (*p == '\\') *p = '/';
 			return true;
 		}
@@ -342,12 +344,13 @@ static bool ConvertXboxPathToLocal(const char* xboxPath, char* outBuf, size_t ou
 		int partNum = 0;
 		while (*p >= '0' && *p <= '9') { partNum = partNum * 10 + (*p - '0'); p++; }
 		if (*p == '\\' || *p == '/') p++;
-		const char* drive = NULL;
+		char drive = 0;
 		for (size_t i = 0; i < sizeof(s_partitionDrives) / sizeof(s_partitionDrives[0]); i++) {
 			if (s_partitionDrives[i].partition == partNum) { drive = s_partitionDrives[i].drive; break; }
 		}
-		if (!drive) return false;
-		snprintf(outBuf, outSize, "xboxfs/%s/%s", drive, p);
+		const char* prefix = XboxFS_DriveToPrefix(drive);
+		if (!prefix) return false;
+		snprintf(outBuf, outSize, "%s/%s", prefix, p);
 		for (char* q = outBuf; *q; q++) if (*q == '\\') *q = '/';
 		return true;
 	}

@@ -8,10 +8,11 @@
 #include <cstring>
 #include <cstdlib>
 #include <sys/stat.h>
+#include "xboxfs_drive.h"
 
 #define VGAMES_MAX 512
-#define VGAMES_INI "xboxfs/C/UIX Configs/games.ini"
-#define VGAMES_ICONS "xboxfs/C/UIX Configs/icons"
+#define VGAMES_INI "Configs/games.ini"
+#define VGAMES_ICONS "Configs/icons"
 
 struct VirtualGame {
     char name[128];        // Display name / virtual folder name
@@ -100,8 +101,8 @@ inline void VGames_Reload() {
 inline void VGames_Save() {
     // Ensure directory exists
     struct stat st;
-    if (stat("xboxfs/C/UIX Configs", &st) != 0) {
-        system("mkdir -p \"xboxfs/C/UIX Configs\"");
+    if (stat("Configs", &st) != 0) {
+        system("mkdir -p \"Configs\"");
     }
 
     FILE* fp = fopen(VGAMES_INI, "w");
@@ -167,14 +168,14 @@ inline void VGames_DeleteByName(const char* name) {
 
     // Delete icon file
     char iconPath[512];
-    snprintf(iconPath, sizeof(iconPath), "xboxfs/C/UIX Configs/icons/%s.jpg", g_vgames.games[idx].titleID);
+    snprintf(iconPath, sizeof(iconPath), "Configs/icons/%s.jpg", g_vgames.games[idx].titleID);
     remove(iconPath);
 
     // Mark as invalid
     g_vgames.games[idx].valid = false;
 
     // Rewrite games.ini without this entry
-    FILE* fp = fopen("xboxfs/C/UIX Configs/games.ini", "w");
+    FILE* fp = fopen("Configs/games.ini", "w");
     if (fp) {
         for (int i = 0; i < g_vgames.count; i++) {
             if (!g_vgames.games[i].valid) continue;
@@ -192,7 +193,7 @@ inline void VGames_DeleteByName(const char* name) {
 }
 
 // Check if a path matches a virtual game folder
-// e.g. "xboxfs/E/Games/The Simpsons Road Rage" → returns game index or -1
+// e.g. "Library/Games/The Simpsons Road Rage" → returns game index or -1
 inline int VGames_MatchFolder(const char* localPath) {
     VGames_Load();
     // Normalize: collapse double slashes and strip trailing slash
@@ -207,10 +208,16 @@ inline int VGames_MatchFolder(const char* localPath) {
 
     for (int i = 0; i < g_vgames.count; i++) {
         if (!g_vgames.games[i].valid) continue;
-        // Build expected path: xboxfs/{drive}/{category}/{name}
+        // Virtual games store their Xbox drive letter ("E", typically), but
+        // on desktop they live under Library/{category}/{name}. Build the
+        // expected disk path that way -- F/G/R never reach this code path
+        // since those drives have no analog on desktop.
+        const char* prefix = (g_vgames.games[i].drive[0])
+            ? XboxFS_DriveToPrefix(g_vgames.games[i].drive[0]) : 0;
+        if (!prefix) continue;
         char expected[512];
-        snprintf(expected, sizeof(expected), "xboxfs/%s/%s/%s",
-                 g_vgames.games[i].drive, g_vgames.games[i].category, g_vgames.games[i].name);
+        snprintf(expected, sizeof(expected), "%s/%s/%s",
+                 prefix, g_vgames.games[i].category, g_vgames.games[i].name);
         if (strcasecmp(norm, expected) == 0)
             return i;
     }

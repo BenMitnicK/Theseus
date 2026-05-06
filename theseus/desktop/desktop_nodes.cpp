@@ -37,8 +37,8 @@ static const char* ResolveAudioURL(const TCHAR* url)
 		return translated;
 	}
 
-	// Relative path; prepend xboxfs/Q/
-	snprintf(s_path, sizeof(s_path), "xboxfs/Q/%s", url);
+	// Relative path; prepend Data/
+	snprintf(s_path, sizeof(s_path), "Data/%s", url);
 	// Convert backslashes
 	for (char* p = s_path; *p; p++)
 		if (*p == '\\') *p = '/';
@@ -1791,7 +1791,7 @@ static void EnumerateTitles()
 	if (EnumerateTitlesFromFATX()) return;
 
 	// Fall back to xboxfs host directory
-	const char* udataPath = "xboxfs/E/UDATA";
+	const char* udataPath = "Library/UDATA";
 
 	// Helper lambda: process a single title directory entry
 	auto ProcessTitleEntry = [&](const char* entName) {
@@ -1964,11 +1964,11 @@ static void LoadDesktopIcons()
 
 		// Check if icon file exists
 		char iconPath[512];
-		snprintf(iconPath, sizeof(iconPath), "xboxfs/C/UIX Configs/icons/%s.jpg", g_vgames.games[i].titleID);
+		snprintf(iconPath, sizeof(iconPath), "Configs/icons/%s.jpg", g_vgames.games[i].titleID);
 		struct stat _ist;
 		if (stat(iconPath, &_ist) != 0) {
 			// Try .png
-			snprintf(iconPath, sizeof(iconPath), "xboxfs/C/UIX Configs/icons/%s.png", g_vgames.games[i].titleID);
+			snprintf(iconPath, sizeof(iconPath), "Configs/icons/%s.png", g_vgames.games[i].titleID);
 			if (stat(iconPath, &_ist) != 0) continue;
 		}
 
@@ -2105,7 +2105,7 @@ public:
 				         t.titleID, t.saves[i].folderName);
 				// Check if save-specific image exists, fall back to title root
 				char hostPath[512];
-				snprintf(hostPath, sizeof(hostPath), "xboxfs/E/UDATA/%s/%s/SaveImage.xbx",
+				snprintf(hostPath, sizeof(hostPath), "Library/UDATA/%s/%s/SaveImage.xbx",
 				         t.titleID, t.saves[i].folderName);
 				struct stat _st;
 				if (stat(hostPath, &_st) != 0) {
@@ -3269,7 +3269,7 @@ END_NODE_FUN()
 
 // ============================================================================
 // CMediaCollection - filesystem-backed library of movies + TV shows.
-// Scans configured roots, caches results to xboxfs/E/MediaDB.cache, exposes
+// Scans configured roots, caches results to Library/MediaDB.cache, exposes
 // a stateful query API to XAP (SetCurrentShow / GetSeasonName / etc.).
 // ============================================================================
 
@@ -3288,7 +3288,7 @@ END_NODE_FUN()
 // Library roots come from desktop.ini globals (loaded by sdl_main.cpp).
 // Empty by default; user configures via Settings -> Media Library tab.
 // The scan no-ops on empty paths -- no library shown until configured.
-static const char* kCachePath = "xboxfs/E/MediaDB.cache";
+static const char* kCachePath = "Library/MediaDB.cache";
 
 extern char g_moviesRoot[512];
 extern char g_tvRoot[512];

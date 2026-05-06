@@ -6,7 +6,7 @@
 // kicked off async via TMDB_QueueMovieLookup() / TMDB_QueueShowLookup()
 // and polled via TMDB_GetMovie() / TMDB_GetShow().
 //
-// Disk cache lives at xboxfs/E/TMDB/{movie,show}_<slug>.json so we don't
+// Disk cache lives at Library/TMDB/{movie,show}_<slug>.json so we don't
 // hit the API every dashboard launch.
 
 #pragma once

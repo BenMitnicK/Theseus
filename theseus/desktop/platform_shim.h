@@ -10,6 +10,8 @@
 #define UIX_DESKTOP 1
 #define _THESEUS_STD_H 1 // Prevent toolbox xboxinternals.h kernel type redefs
 
+#include "xboxfs_drive.h" // XboxFS_DriveToPrefix shared helper, used by stubs below
+
 #include <SDL.h>
 #ifdef __cplusplus
 #include <cstdio>
@@ -283,16 +285,21 @@ struct FindFileHandle {
 inline HANDLE FindFirstFile(const char* path, WIN32_FIND_DATA* fd) {
     if (!path || !fd) return INVALID_HANDLE_VALUE;
 
-    // Translate Xbox-style paths (e.g. "Q:\Fonts\*.xtf" -> "xboxfs/Q/Fonts/*.xtf")
+    // Translate Xbox-style paths (e.g. "Q:\Fonts\*.xtf" -> "Data/Fonts/*.xtf").
     char localPath[512];
     const char* colon = strchr(path, ':');
     if (colon && (colon[1] == '\\' || colon[1] == '/')) {
         int driveLen = (int)(colon - path);
-        if (driveLen > 0 && driveLen < 32) {
-            char drive[32];
-            memcpy(drive, path, driveLen);
-            drive[driveLen] = '\0';
-            snprintf(localPath, sizeof(localPath), "xboxfs/%s/%s", drive, colon + 2);
+        if (driveLen == 1) {
+            const char* prefix = XboxFS_DriveToPrefix(path[0]);
+            if (prefix) {
+                snprintf(localPath, sizeof(localPath), "%s/%s", prefix, colon + 2);
+            } else {
+                // Unknown drive (F:, G:, R:, ...) -- no analog on desktop.
+                // Pass through as-is so opendir below fails naturally.
+                strncpy(localPath, path, sizeof(localPath) - 1);
+                localPath[sizeof(localPath) - 1] = '\0';
+            }
         } else {
             strncpy(localPath, path, sizeof(localPath) - 1);
             localPath[sizeof(localPath) - 1] = '\0';
@@ -368,15 +375,18 @@ inline HANDLE FindFirstFile(const char* path, WIN32_FIND_DATA* fd) {
     strncpy(ffh->pattern, patBuf, sizeof(ffh->pattern) - 1);
     ffh->pattern[sizeof(ffh->pattern) - 1] = '\0';
 
-    // Check if this is a game directory scan; inject virtual entries
-    // Detect pattern: xboxfs/{drive}/{category}  (e.g. "xboxfs/E/Games")
+    // Check if this is a game directory scan; inject virtual entries.
+    // Detect pattern: Library/{category}  (e.g. "Library/Games"). Library
+    // collapses E:, F:, G: on desktop -- virtual games always reference
+    // drive E for VGames_GetForDirectory.
     ffh->vgCount = 0;
     ffh->vgPos = 0;
     ffh->vgDrive[0] = 0;
     ffh->vgCategory[0] = 0;
     {
-        char driveBuf[4] = {}, catBuf[32] = {};
-        if (sscanf(dirBuf, "xboxfs/%3[^/]/%31[^/]", driveBuf, catBuf) == 2) {
+        char driveBuf[4] = "E";
+        char catBuf[32] = {};
+        if (sscanf(dirBuf, "Library/%31[^/]", catBuf) == 1) {
             // Check if this is a game-related category
             const char* gameCats[] = { "Games", "Applications", "Apps", "Homebrew", "Emulators", "Dashboards" };
             for (int gc = 0; gc < 6; gc++) {
@@ -477,22 +487,22 @@ inline BOOL FindClose(HANDLE h) {
 }
 #endif // !_WIN32
 
-// Simple Xbox path translation for stubs below (full version in xboxfs.h)
-// Converts "X:\path\to\file" -> "xboxfs/X/path/to/file"
+// Simple Xbox path translation for stubs below (full version in xboxfs.h).
+// Converts "C:\..." -> "Configs/...", "Q:\..." -> "Data/...",
+// "E:\..." -> "Library/..."; other drives unchanged (caller's stat will fail).
 inline const char* _StubTranslatePath(const char* xboxPath) {
     static char s_stubBuf[512];
     if (!xboxPath) return xboxPath;
     const char* colon = strchr(xboxPath, ':');
     if (colon && (colon[1] == '\\' || colon[1] == '/')) {
         int driveLen = (int)(colon - xboxPath);
-        if (driveLen > 0 && driveLen < 32) {
-            char drive[32];
-            memcpy(drive, xboxPath, driveLen);
-            drive[driveLen] = '\0';
-            const char* rest = colon + 2;
-            snprintf(s_stubBuf, sizeof(s_stubBuf), "xboxfs/%s/%s", drive, rest);
-            for (char* p = s_stubBuf; *p; p++) { if (*p == '\\') *p = '/'; }
-            return s_stubBuf;
+        if (driveLen == 1) {
+            const char* prefix = XboxFS_DriveToPrefix(xboxPath[0]);
+            if (prefix) {
+                snprintf(s_stubBuf, sizeof(s_stubBuf), "%s/%s", prefix, colon + 2);
+                for (char* p = s_stubBuf; *p; p++) { if (*p == '\\') *p = '/'; }
+                return s_stubBuf;
+            }
         }
     }
     return xboxPath;

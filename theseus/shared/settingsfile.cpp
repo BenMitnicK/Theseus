@@ -22,7 +22,7 @@ void XI_GetProgramPath( char* szBuffer )
 	if( (p = strrchr( szBuffer, '\\' )) != NULL )
 		*p = '\0';
 #else
-	// Desktop: config files are in xboxfs/Q/
+	// Desktop: config files are in Data/
 	strcpy(szBuffer, "Q:");
 #endif
 }

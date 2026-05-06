@@ -101,9 +101,9 @@ static bool TM_CopyFile(const char* src, const char* dst) {
 #define TM_MAX_ICONS 512
 static int TM_ReadIconsIni(char keys[][128], char vals[][128]) {
     int count = 0;
-    const char* path = "xboxfs/C/UIX Configs/Icons.ini";
+    const char* path = "Configs/Icons.ini";
     FILE* fp = fopen(path, "r");
-    if (!fp) fp = fopen("xboxfs/C/UIX Configs/icons.ini", "r");
+    if (!fp) fp = fopen("Configs/icons.ini", "r");
     if (!fp) return 0;
     char line[256];
     while (fgets(line, sizeof(line), fp) && count < TM_MAX_ICONS) {
@@ -123,7 +123,7 @@ static int TM_ReadIconsIni(char keys[][128], char vals[][128]) {
 }
 
 static void TM_WriteIconsIni(char keys[][128], char vals[][128], int count) {
-    FILE* fp = fopen("xboxfs/C/UIX Configs/Icons.ini", "w");
+    FILE* fp = fopen("Configs/Icons.ini", "w");
     if (!fp) return;
     fprintf(fp, "[default]\n");
     for (int i = 0; i < count; i++)
@@ -968,7 +968,7 @@ void RenderTitleMaker() {
             // create here. harddrive.xap reads this file to map displayed
             // title names back to TitleIDs for icon lookup; without it, the
             // imported titles render with no icon even though the .jpg file
-            // is sitting in xboxfs/C/UIX Configs/icons/.
+            // is sitting in Configs/icons/.
             static char iconKeys[TM_MAX_ICONS][128];
             static char iconVals[TM_MAX_ICONS][128];
             int iconCount = TM_ReadIconsIni(iconKeys, iconVals);

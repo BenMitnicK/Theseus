@@ -384,7 +384,7 @@ int DashAudio_Init(void)
 
 
     // Auto-scan music collection. Root is configurable via desktop.ini
-    // [Library] MusicRoot=...; falls back to xboxfs/Q/Music for legacy
+    // [Library] MusicRoot=...; falls back to Data/Music for legacy
     // installs. Declared in audio_sdl.h.
     DashMusic_Scan(DashMusic_GetConfiguredRoot());
 
@@ -393,13 +393,13 @@ int DashAudio_Init(void)
 
 // Read the configured music root from desktop.ini's g_musicRoot global
 // (loaded by sdl_main.cpp::LoadDesktopSettings). Falls back to the
-// legacy xboxfs/Q/Music path if the user hasn't configured one.
+// legacy Data/Music path if the user hasn't configured one.
 extern "C" char g_musicRoot[512];
 
 const char* DashMusic_GetConfiguredRoot(void)
 {
     if (g_musicRoot[0]) return g_musicRoot;
-    return "xboxfs/Q/Music";
+    return "Data/Music";
 }
 
 static bool s_muted = false;

@@ -14,7 +14,7 @@ on:
 permissions:
   contents: write
 
-# Per-platform: build, package binary + xboxfs + runtime libs into a
+# Per-platform: build, package binary + Configs/Data/Library + runtime libs into a
 # platform-named archive, attach to the GitHub Release.
 
 jobs:
@@ -27,21 +27,21 @@ jobs:
       - name: Install deps
         run: brew install sdl2 sdl2_mixer mpv curl pkg-config
 
-      - name: Stub xboxfs
-        run: mkdir -p xboxfs/Q xboxfs/E xboxfs/C
+      - name: Stub Configs/Data/Library
+        run: mkdir -p Configs Data Library
 
       - name: Build
         run: PKG_CONFIG_PATH="$(brew --prefix curl)/lib/pkgconfig:${PKG_CONFIG_PATH}" make -C build desktop
 
       - name: Package
         # macOS users are expected to have Homebrew SDL2/mpv/curl installed.
-        # We ship the binary + xboxfs + version stamp; dylibs come from brew.
+        # We ship the binary + Configs/Data/Library + version stamp; dylibs come from brew.
         run: |
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
           DROP="Theseus-${TAG}-macos"
           mkdir -p "${DROP}"
           cp ~/builds/theseus/desktop/theseus "${DROP}/"
-          cp -R ~/builds/theseus/desktop/xboxfs "${DROP}/xboxfs"
+          for D in Configs Data Library; do cp -R ~/builds/theseus/desktop/$D "${DROP}/$D"; done
           zip -r "${DROP}.zip" "${DROP}"
           echo "ARCHIVE=${DROP}.zip" >> "$GITHUB_ENV"
 
@@ -65,8 +65,8 @@ jobs:
                               libsdl2-dev libsdl2-mixer-dev libgl-dev \
                               libmpv-dev libcurl4-openssl-dev
 
-      - name: Stub xboxfs
-        run: mkdir -p xboxfs/Q xboxfs/E xboxfs/C
+      - name: Stub Configs/Data/Library
+        run: mkdir -p Configs Data Library
 
       - name: Build
         run: make -C build desktop
@@ -77,7 +77,7 @@ jobs:
           DROP="Theseus-${TAG}-linux-x64"
           mkdir -p "${DROP}"
           cp ~/builds/theseus/desktop/theseus "${DROP}/"
-          cp -R ~/builds/theseus/desktop/xboxfs "${DROP}/xboxfs"
+          for D in Configs Data Library; do cp -R ~/builds/theseus/desktop/$D "${DROP}/$D"; done
           tar czf "${DROP}.tar.gz" "${DROP}"
           echo "ARCHIVE=${DROP}.tar.gz" >> "$GITHUB_ENV"
 
@@ -101,8 +101,8 @@ jobs:
                               libsdl2-dev libsdl2-mixer-dev libgl-dev \
                               libmpv-dev libcurl4-openssl-dev
 
-      - name: Stub xboxfs
-        run: mkdir -p xboxfs/Q xboxfs/E xboxfs/C
+      - name: Stub Configs/Data/Library
+        run: mkdir -p Configs Data Library
 
       - name: Build
         run: make -C build desktop
@@ -113,7 +113,7 @@ jobs:
           DROP="Theseus-${TAG}-linux-arm64"
           mkdir -p "${DROP}"
           cp ~/builds/theseus/desktop/theseus "${DROP}/"
-          cp -R ~/builds/theseus/desktop/xboxfs "${DROP}/xboxfs"
+          for D in Configs Data Library; do cp -R ~/builds/theseus/desktop/$D "${DROP}/$D"; done
           tar czf "${DROP}.tar.gz" "${DROP}"
           echo "ARCHIVE=${DROP}.tar.gz" >> "$GITHUB_ENV"
 
@@ -199,8 +199,8 @@ jobs:
           mv curl-*-win64-mingw/* . || true
           rmdir curl-*-win64-mingw 2>/dev/null || true
 
-      - name: Stub xboxfs
-        run: mkdir -p xboxfs/Q xboxfs/E xboxfs/C
+      - name: Stub Configs/Data/Library
+        run: mkdir -p Configs Data Library
 
       - name: Build
         run: make -C build desktop-win64

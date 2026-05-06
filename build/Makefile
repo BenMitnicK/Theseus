@@ -673,29 +673,31 @@ desktop: $(DESKTOP_TARGET)
 $(DESKTOP_TARGET): $(DESKTOP_OBJS)
 	@mkdir -p $(DESKTOP_DIR)
 	$(DESKTOP_CXX) -o $@ $(DESKTOP_OBJS) $(DESKTOP_LDFLAGS)
-	@# xboxfs/ must live next to the binary at runtime. The binary CWDs to
-	@# its own directory and looks for xboxfs/ there (Q:\, E:\, C:\ live inside).
-	@# Prefer rsync for fast incremental syncs, but fall back to cp -R on
-	@# barebones systems (e.g. some Debian installs ship without rsync).
-	@if command -v rsync >/dev/null 2>&1; then \
-		rsync -a --delete $(THESEUS_SRC)/../xboxfs/ $(DESKTOP_DIR)/xboxfs/; \
-	else \
-		rm -rf $(DESKTOP_DIR)/xboxfs && mkdir -p $(DESKTOP_DIR)/xboxfs && \
-		cp -R $(THESEUS_SRC)/../xboxfs/. $(DESKTOP_DIR)/xboxfs/; \
-	fi
-	@# Stamp xboxfs/C/version. Canon version lives in the source-tree
-	@# xboxfs/C/version (`version=X.Y.YYMMDD`) and is hand-bumped on
+	@# Configs/, Data/, Library/ live next to the binary at runtime; the
+	@# binary CWDs into its own directory and resolves Xbox C:/Q:/E:
+	@# paths through them. Prefer rsync for fast incrementals; fall back
+	@# to cp -R on barebones systems (some Debian installs ship without rsync).
+	@for D in Configs Data Library; do \
+		if command -v rsync >/dev/null 2>&1; then \
+			rsync -a --delete $(THESEUS_SRC)/../$$D/ $(DESKTOP_DIR)/$$D/; \
+		else \
+			rm -rf $(DESKTOP_DIR)/$$D && mkdir -p $(DESKTOP_DIR)/$$D && \
+			cp -R $(THESEUS_SRC)/../$$D/. $(DESKTOP_DIR)/$$D/; \
+		fi; \
+	done
+	@# Stamp Configs/version. Canon version lives in the source-tree
+	@# Configs/version (`version=X.Y.YYMMDD`) and is hand-bumped on
 	@# release. The build appends `-YYMMDD-<short-sha>` so artifact
 	@# versions are traceable back to a build date + commit while still
 	@# carrying the canonical release tag they were built from.
-	@VFILE="$(DESKTOP_DIR)/xboxfs/C/version"; \
+	@VFILE="$(DESKTOP_DIR)/Configs/version"; \
 	 mkdir -p "$$(dirname $$VFILE)"; \
 	 CANON=$$(grep -E '^version=' "$$VFILE" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '\r' || true); \
 	 [ -n "$$CANON" ] || CANON="0.0.000000"; \
 	 BASE=$$(echo "$$CANON" | cut -d- -f1); \
 	 STAMP="$$BASE-$$(date -u '+%y%m%d')-$$(git -C $(THESEUS_SRC)/.. rev-parse --short HEAD 2>/dev/null || echo unknown)"; \
 	 printf '[default]\nversion=%s\n' "$$STAMP" > "$$VFILE"
-	@echo "    (synced xboxfs + stamped version)"
+	@echo "    (synced Configs/Data/Library + stamped version)"
 
 $(DESKTOP_DIR)/%.o: $(THESEUS_SRC)/%.cpp
 	@mkdir -p $(dir $@)
@@ -709,7 +711,7 @@ desktop-clean:
 # ============================================================
 # Uses x86_64-w64-mingw32-g++ + the SDL2 mingw devel libs from
 # https://www.libsdl.org/. Output is a self-contained drop with the
-# .exe, SDL2.dll, SDL2_mixer.dll, and xboxfs/ -- runnable on Windows
+# .exe, SDL2.dll, SDL2_mixer.dll, and Configs/Data/Library -- runnable on Windows
 # directly or under Wine/Whiskey on macOS.
 #
 # Setup (one-time):
@@ -851,20 +853,22 @@ $(WIN64_TARGET): $(WIN64_OBJS)
 	@for f in $(CURL_MINGW_DIR)/bin/libcurl*.dll $(CURL_MINGW_DIR)/libcurl*.dll; do \
 		[ -f "$$f" ] && cp "$$f" $(WIN64_DIR)/ || true ; \
 	done; true
-	@if command -v rsync >/dev/null 2>&1; then \
-		rsync -a --delete $(THESEUS_SRC)/../xboxfs/ $(WIN64_DIR)/xboxfs/; \
-	else \
-		rm -rf $(WIN64_DIR)/xboxfs && mkdir -p $(WIN64_DIR)/xboxfs && \
-		cp -R $(THESEUS_SRC)/../xboxfs/. $(WIN64_DIR)/xboxfs/; \
-	fi
-	@VFILE="$(WIN64_DIR)/xboxfs/C/version"; \
+	@for D in Configs Data Library; do \
+		if command -v rsync >/dev/null 2>&1; then \
+			rsync -a --delete $(THESEUS_SRC)/../$$D/ $(WIN64_DIR)/$$D/; \
+		else \
+			rm -rf $(WIN64_DIR)/$$D && mkdir -p $(WIN64_DIR)/$$D && \
+			cp -R $(THESEUS_SRC)/../$$D/. $(WIN64_DIR)/$$D/; \
+		fi; \
+	done
+	@VFILE="$(WIN64_DIR)/Configs/version"; \
 	 mkdir -p "$$(dirname $$VFILE)"; \
 	 CANON=$$(grep -E '^version=' "$$VFILE" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '\r' || true); \
 	 [ -n "$$CANON" ] || CANON="0.0.000000"; \
 	 BASE=$$(echo "$$CANON" | cut -d- -f1); \
 	 STAMP="$$BASE-$$(date -u '+%y%m%d')-$$(git -C $(THESEUS_SRC)/.. rev-parse --short HEAD 2>/dev/null || echo unknown)"; \
 	 printf '[default]\nversion=%s\n' "$$STAMP" > "$$VFILE"
-	@echo "    (bundled DLLs + xboxfs + stamped version -> $(WIN64_DIR))"
+	@echo "    (bundled DLLs + Configs/Data/Library + stamped version -> $(WIN64_DIR))"
 
 $(WIN64_DIR)/%.o: $(THESEUS_SRC)/%.cpp
 	@mkdir -p $(dir $@)
@@ -878,7 +882,7 @@ desktop-win64-clean:
 # ============================================================
 # Builds an aarch64 Linux ELF for testers running ARM64 Linux on devices
 # like jailbroken Switches, Pi 4/5 boxes, or ARM cloud VMs. Output is a
-# self-contained drop with the binary + xboxfs/. Runtime deps on the
+# self-contained drop with the binary + Configs/Data/Library/. Runtime deps on the
 # target are libsdl2-2.0-0 + libsdl2-mixer-2.0-0 + libgl1 (or distro
 # equivalents).
 #
@@ -970,14 +974,16 @@ desktop-linux-arm64: $(LINUX_ARM64_TARGET)
 $(LINUX_ARM64_TARGET): $(LINUX_ARM64_OBJS)
 	@mkdir -p $(LINUX_ARM64_DIR)
 	$(LINUX_ARM64_CXX) -o $@ $(LINUX_ARM64_OBJS) $(LINUX_ARM64_LDFLAGS)
-	@# xboxfs/ next to the binary, same as the other desktop targets.
-	@if command -v rsync >/dev/null 2>&1; then \
-		rsync -a --delete $(THESEUS_SRC)/../xboxfs/ $(LINUX_ARM64_DIR)/xboxfs/; \
-	else \
-		rm -rf $(LINUX_ARM64_DIR)/xboxfs && mkdir -p $(LINUX_ARM64_DIR)/xboxfs && \
-		cp -R $(THESEUS_SRC)/../xboxfs/. $(LINUX_ARM64_DIR)/xboxfs/; \
-	fi
-	@echo "    (synced xboxfs -> $(LINUX_ARM64_DIR)/xboxfs)"
+	@# Configs/Data/Library next to the binary, same as desktop target.
+	@for D in Configs Data Library; do \
+		if command -v rsync >/dev/null 2>&1; then \
+			rsync -a --delete $(THESEUS_SRC)/../$$D/ $(LINUX_ARM64_DIR)/$$D/; \
+		else \
+			rm -rf $(LINUX_ARM64_DIR)/$$D && mkdir -p $(LINUX_ARM64_DIR)/$$D && \
+			cp -R $(THESEUS_SRC)/../$$D/. $(LINUX_ARM64_DIR)/$$D/; \
+		fi; \
+	done
+	@echo "    (synced Configs/Data/Library -> $(LINUX_ARM64_DIR))"
 
 $(LINUX_ARM64_DIR)/%.o: $(THESEUS_SRC)/%.cpp
 	@mkdir -p $(dir $@)

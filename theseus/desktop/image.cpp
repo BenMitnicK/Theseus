@@ -192,12 +192,15 @@ LPDIRECT3DTEXTURE8 LoadTextureFromXPR(const char *xprfile)
 
 	FILE* f = fopen(xprfile, "rb");
 	if (!f) {
-		// Try xboxfs mapping
+		// Try drive-letter remap (C: -> Configs, Q: -> Data, E: -> Library).
 		char mapped[MAX_PATH];
 		if (xprfile[0] && xprfile[1] == ':' && (xprfile[2] == '\\' || xprfile[2] == '/')) {
-			snprintf(mapped, sizeof(mapped), "xboxfs/%c/%s", xprfile[0], xprfile + 3);
-			for (char* p = mapped; *p; p++) if (*p == '\\') *p = '/';
-			f = fopen(mapped, "rb");
+			const char* prefix = XboxFS_DriveToPrefix(xprfile[0]);
+			if (prefix) {
+				snprintf(mapped, sizeof(mapped), "%s/%s", prefix, xprfile + 3);
+				for (char* p = mapped; *p; p++) if (*p == '\\') *p = '/';
+				f = fopen(mapped, "rb");
+			}
 		}
 	}
 	if (!f) {
@@ -490,14 +493,19 @@ void PreloadSkinTextures()
 	}
 
 	// Convert skin dir to ANSI path, then map through xboxfs
-	// Desktop: map Q:\path to xboxfs/Q/path for directory enumeration
+	// Desktop: map Q:\path to Data/path for directory enumeration
 	char ansiSkinDir[MAX_PATH] = {0};
 	Ansi(ansiSkinDir, g_sSkinDir, MAX_PATH);
 
 	char mappedDir[MAX_PATH];
 	if (ansiSkinDir[0] && ansiSkinDir[1] == ':' && (ansiSkinDir[2] == '\\' || ansiSkinDir[2] == '/')) {
-		snprintf(mappedDir, sizeof(mappedDir), "xboxfs/%c/%s", ansiSkinDir[0], ansiSkinDir + 3);
-		for (char* p = mappedDir; *p; p++) if (*p == '\\') *p = '/';
+		const char* prefix = XboxFS_DriveToPrefix(ansiSkinDir[0]);
+		if (prefix) {
+			snprintf(mappedDir, sizeof(mappedDir), "%s/%s", prefix, ansiSkinDir + 3);
+			for (char* p = mappedDir; *p; p++) if (*p == '\\') *p = '/';
+		} else {
+			mappedDir[0] = '\0';
+		}
 	} else {
 		strncpy(mappedDir, ansiSkinDir, MAX_PATH);
 	}

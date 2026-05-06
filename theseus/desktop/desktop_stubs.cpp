@@ -119,7 +119,7 @@ int CXBExecutable::ReadFile(const char* szFileName, const bool, const bool) {
     }
 
     // No real file; check if this is a virtual game.
-    // Path looks like: xboxfs/E/Games/Name/default.xbe; strip the filename.
+    // Path looks like: Library/Games/Name/default.xbe; strip the filename.
     char folderPath[512];
     strncpy(folderPath, translated, sizeof(folderPath) - 1);
     folderPath[sizeof(folderPath) - 1] = 0;

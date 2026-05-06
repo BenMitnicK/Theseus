@@ -19,6 +19,7 @@
 #include "preloader.h"
 #include "boot_anim.h"
 #include "panel_shared.h"
+#include "launch.h"
 #include <signal.h>
 #ifdef __APPLE__
 #include <mach-o/dyld.h>  // _NSGetExecutablePath
@@ -486,7 +487,40 @@ static void PreSwapOverlays() {
     // XAP Editor (F2); floating ImGui window
     RenderXAPEditor();
 
+    // Launch overlay (fade-to-black + Xbox logo before spawning a game).
+    // Tick advances the state machine and fires the actual spawn + window
+    // minimize when the fade reaches its hold point. Drawn last so it sits
+    // above the menu bar and any other overlay.
+    LaunchOverlay_Tick();
+    if (LaunchOverlay_IsActive()) {
+        float a = LaunchOverlay_Alpha();
+        int winW, winH;
+        SDL_GetWindowSize(g_pSDLWindow, &winW, &winH);
+        ImDrawList* dl = ImGui::GetForegroundDrawList();
+        dl->AddRectFilled(ImVec2(0, 0), ImVec2((float)winW, (float)winH),
+                          IM_COL32(0, 0, 0, (int)(255.0f * a)));
 
+        int texW = 0, texH = 0;
+        unsigned int tex = LaunchOverlay_LogoGLTex(&texW, &texH);
+        if (tex && texW > 0 && texH > 0 && a > 0.05f) {
+            // Logo dominates the screen during launch (matches the Xbox
+            // dashboard's launch beat). Target ~60% of the window width
+            // and clamp height to ~70% of window height for ultra-wide
+            // displays. Preserve source aspect ratio.
+            float drawW = (float)winW * 0.60f;
+            float drawH = drawW * ((float)texH / (float)texW);
+            float maxH = (float)winH * 0.70f;
+            if (drawH > maxH) {
+                drawH = maxH;
+                drawW = drawH * ((float)texW / (float)texH);
+            }
+            ImVec2 p0((winW - drawW) * 0.5f, (winH - drawH) * 0.5f);
+            ImVec2 p1(p0.x + drawW, p0.y + drawH);
+            ImU32 tint = IM_COL32(255, 255, 255, (int)(255.0f * a));
+            dl->AddImage((ImTextureID)(intptr_t)tex, p0, p1,
+                         ImVec2(0, 0), ImVec2(1, 1), tint);
+        }
+    }
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -998,6 +1032,11 @@ int main(int argc, char* argv[]) {
                         case SDL_WINDOWEVENT_SHOWN:
                             g_windowFocused = true;
                             ApplyEffectiveMute();
+                            // If the launch overlay is still up when focus
+                            // returns (e.g. user clicked back to the dashboard
+                            // before the fade window expired), clear it so
+                            // the user sees the live scene immediately.
+                            LaunchOverlay_Reset();
                             break;
                         default: break;
                         }

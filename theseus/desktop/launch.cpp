@@ -20,6 +20,8 @@
 #endif
 
 #include "virtual_games.h"
+#include "stb_image.h"
+#include <SDL_opengl.h>
 
 extern "C" void DashAudio_MuteAll(void);
 extern SDL_Window* g_pSDLWindow;
@@ -110,17 +112,15 @@ void DesktopLaunch(const char* spec)
 #endif
 }
 
-void DesktopLaunchGame(const char* spec)
+// Actually fork/spawn the launch spec. Called by the overlay tick once the
+// fade-in has completed. Same mechanics as before, just split out so the
+// overlay can drive timing.
+static void SpawnLaunchSpec(const char* spec)
 {
 	if (!spec || !spec[0]) return;
 
-	fprintf(stderr, "[launch] Starting: %s\n", spec);
+	fprintf(stderr, "[launch] Spawning: %s\n", spec);
 
-	// Fire-and-forget the game launcher (no waitpid -- steam/xemu fork-and-
-	// exit and would falsely trigger a "game ended" pop-back). The XAP-side
-	// theLaunchGameLevel navigates back to main menu after a short delay,
-	// and minimizing the window cuts dashboard audio via the focus-loss
-	// path automatically.
 #ifndef _WIN32
 	pid_t pid = fork();
 	if (pid == 0)
@@ -164,6 +164,141 @@ void DesktopLaunchGame(const char* spec)
 
 	extern SDL_Window* g_pSDLWindow;
 	if (g_pSDLWindow) SDL_MinimizeWindow(g_pSDLWindow);
+}
+
+// ============================================================================
+// Launch overlay state machine
+//
+// Mirrors theLaunchGameLevel's timing: a brief fade-in to black so the user
+// sees a clear "we're launching" beat before the dashboard window minimizes
+// and the game's own splash takes over. Lives outside the scene graph so we
+// don't trip the CLevel::Advance crash that fires when navigating back out
+// of theLaunchGameLevel after launch() returns on desktop.
+// ============================================================================
+
+static bool   s_overlayActive  = false;
+static double s_overlayStart   = 0.0;
+static bool   s_overlaySpawned = false;
+static char   s_pendingSpec[2048];
+
+// Total fade duration (seconds). The first kFadeIn portion is the alpha ramp,
+// after which we hold full black for the remaining time and fire the spawn at
+// kSpawnAt. theLaunchGameLevel uses sleep 1.1; we match that order of magnitude.
+static const float kFadeIn  = 0.45f;
+static const float kSpawnAt = 0.60f;
+static const float kHoldEnd = 1.10f;
+
+static double LaunchOverlay_Now()
+{
+	return (double)SDL_GetTicks() / 1000.0;
+}
+
+bool LaunchOverlay_IsActive()
+{
+	return s_overlayActive;
+}
+
+float LaunchOverlay_Alpha()
+{
+	if (!s_overlayActive) return 0.0f;
+	double t = LaunchOverlay_Now() - s_overlayStart;
+	if (t <= 0.0) return 0.0f;
+	if (t >= (double)kFadeIn) return 1.0f;
+	return (float)(t / (double)kFadeIn);
+}
+
+void LaunchOverlay_Reset()
+{
+	s_overlayActive = false;
+	s_overlaySpawned = false;
+	s_overlayStart = 0.0;
+	s_pendingSpec[0] = 0;
+}
+
+// Lazy-load the Xbox logo PNG (xboxfs/C/UIX Configs/xboxlogo.png) into a
+// GL texture and cache the handle for the rest of the process. The PNG is
+// pre-decoded from Stock's xboxlogo.xbx via OXDK xbx-convert and lives in
+// the desktop-only UIX Configs directory; loading raw PNG with stb_image
+// avoids dragging the engine's asset loader (and its TCHAR / Xbox typedef
+// chain) into launch.cpp.
+unsigned int LaunchOverlay_LogoGLTex(int* outW, int* outH)
+{
+	static GLuint s_logoTex = 0;
+	static int    s_logoW = 0;
+	static int    s_logoH = 0;
+	static bool   s_loadAttempted = false;
+
+	if (!s_loadAttempted) {
+		s_loadAttempted = true;
+		const char* path = "xboxfs/C/UIX Configs/xboxlogo.png";
+		int w = 0, h = 0, ch = 0;
+		unsigned char* pixels = stbi_load(path, &w, &h, &ch, 4);
+		if (pixels) {
+			glGenTextures(1, &s_logoTex);
+			glBindTexture(GL_TEXTURE_2D, s_logoTex);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
+			             GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+			stbi_image_free(pixels);
+			s_logoW = w;
+			s_logoH = h;
+			fprintf(stderr, "[launch] Loaded Xbox logo: %dx%d (tex %u)\n",
+			        w, h, (unsigned)s_logoTex);
+		} else {
+			fprintf(stderr, "[launch] Failed to load %s: %s\n",
+			        path, stbi_failure_reason());
+		}
+	}
+
+	if (outW) *outW = s_logoW;
+	if (outH) *outH = s_logoH;
+	return (unsigned int)s_logoTex;
+}
+
+void LaunchOverlay_Tick()
+{
+	if (!s_overlayActive) return;
+
+	double t = LaunchOverlay_Now() - s_overlayStart;
+
+	if (!s_overlaySpawned && t >= (double)kSpawnAt)
+	{
+		s_overlaySpawned = true;
+		SpawnLaunchSpec(s_pendingSpec);
+	}
+
+	if (t >= (double)kHoldEnd)
+	{
+		// Fade window has elapsed. The window is minimized at this point
+		// (SpawnLaunchSpec calls SDL_MinimizeWindow), so the user won't see
+		// the overlay disappear; just clear state for next time.
+		LaunchOverlay_Reset();
+	}
+}
+
+void DesktopLaunchGame(const char* spec)
+{
+	if (!spec || !spec[0]) return;
+
+	fprintf(stderr, "[launch] Queued: %s\n", spec);
+
+	// If an overlay is already running, fire its pending spawn immediately
+	// so we don't double-stack overlays. Practically this only happens if a
+	// XAP triggers two launches in the same frame.
+	if (s_overlayActive && !s_overlaySpawned && s_pendingSpec[0])
+	{
+		s_overlaySpawned = true;
+		SpawnLaunchSpec(s_pendingSpec);
+	}
+
+	strncpy(s_pendingSpec, spec, sizeof(s_pendingSpec) - 1);
+	s_pendingSpec[sizeof(s_pendingSpec) - 1] = 0;
+	s_overlayStart   = LaunchOverlay_Now();
+	s_overlaySpawned = false;
+	s_overlayActive  = true;
 }
 
 // ============================================================================

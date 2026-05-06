@@ -38,3 +38,14 @@ void DesktopLaunchGame(const char* spec);
 // to a real launch command via games.ini (primary) or default.uixshortcut
 // (fallback), then dispatches to DesktopLaunchGame.
 void DesktopLaunchTitle(const char* devicePath);
+
+// Launch overlay (desktop-only fade transition emulating theLaunchGameLevel).
+// DesktopLaunchGame queues the spawn and arms the overlay; the SDL render loop
+// ticks every frame to advance the fade and fires the actual spawn + minimize
+// when the fade reaches its hold point. Renderer queries IsActive + Alpha to
+// draw a fullscreen black fade with the Xbox logo centered on top.
+bool         LaunchOverlay_IsActive();
+float        LaunchOverlay_Alpha();
+void         LaunchOverlay_Tick();
+void         LaunchOverlay_Reset();
+unsigned int LaunchOverlay_LogoGLTex(int* outW, int* outH); // 0 if not loaded yet

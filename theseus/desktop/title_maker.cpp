@@ -6,6 +6,7 @@
 #include "dashapp.h"
 #include "panel_shared.h"
 #include "virtual_games.h"
+#include "udata_synth.h"
 #include "xiso.h"
 #include "imgui.h"
 #include "imfilebrowser.h"
@@ -539,7 +540,7 @@ void RenderTitleMaker() {
 
             VGames_Update(sel.vgIndex, s_editName, s_editTitleID, s_editLaunch,
                           g_vgames.games[sel.vgIndex].drive, s_categories[s_editCategoryIdx]);
-            VGames_Save();
+            VGames_Save(); UDataSynth_RebuildAll();
 
             // Update Icons.ini for Xbox-side compatibility
             {
@@ -655,7 +656,7 @@ void RenderTitleMaker() {
             s_statusTime = 4.0f;
         } else {
             VGames_Add(cleanNew, genID, "", "E", newCat);
-            VGames_Save();
+            VGames_Save(); UDataSynth_RebuildAll();
             snprintf(s_statusMsg, sizeof(s_statusMsg), "Created: %s (ID: %s)", cleanNew, genID);
             s_statusTime = 3.0f;
             s_newTitleName[0] = 0;
@@ -763,7 +764,7 @@ void RenderTitleMaker() {
                         }
 
                         VGames_Add(safeName, titleIdHex, xemuLaunchCmd, "E", "Games");
-                        VGames_Save();
+                        VGames_Save(); UDataSynth_RebuildAll();
 
                         // Save icon to VGAMES_ICONS/{titleID}.jpg
                         if (s_isoInfo.titleImageRGBA) {
@@ -1090,7 +1091,7 @@ void RenderTitleMaker() {
                 }
             }
 
-            VGames_Save();
+            VGames_Save(); UDataSynth_RebuildAll();
             VGames_Reload();
             TM_WriteIconsIni(iconKeys, iconVals, iconCount);
 
@@ -1123,7 +1124,7 @@ void RenderTitleMaker() {
             }
         }
         if (fixed > 0) {
-            VGames_Save();
+            VGames_Save(); UDataSynth_RebuildAll();
             VGames_Reload();
             s_needsScan = true;
         }

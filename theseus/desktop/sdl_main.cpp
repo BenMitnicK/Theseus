@@ -1024,6 +1024,16 @@ int main(int argc, char* argv[]) {
 
     fprintf(stdout, "InitApp() succeeded - entering main loop\n");
 
+    // Synthesize Library/UDATA/<TitleID>/TitleMeta.xbx for every Title
+    // Maker entry so the dashboard's Memory section renders title pods
+    // for them. Any user-supplied TitleMeta.xbx files (real Xbox saves
+    // copied in) are left alone -- we only fill gaps. Skipped on Xbox
+    // build via the desktop-only call site here.
+    {
+        extern int UDataSynth_RebuildAll();
+        UDataSynth_RebuildAll();
+    }
+
     // Register pre-swap overlay callback for mute toast
     IDirect3DDevice8::s_preSwapCB = PreSwapOverlays;
 

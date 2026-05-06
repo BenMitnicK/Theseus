@@ -1813,6 +1813,26 @@ static void EnumerateTitles()
 			strncpy(title.titleName, entName, sizeof(title.titleName) - 1);
 		snprintf(title.imagePath, sizeof(title.imagePath), "%s/TitleImage.xbx", titlePath);
 		title.hasImage = (access(title.imagePath, F_OK) == 0);
+		// Synthetic UDATA entries from Title Maker don't ship a
+		// TitleImage.xbx (we'd need to encode DXT1 ourselves). Fall
+		// back to Configs/icons/<TitleID>.{jpg,png} -- already what
+		// every other dashboard surface uses for title icons.
+		if (!title.hasImage) {
+			char fallback[1024];
+			snprintf(fallback, sizeof(fallback), "Configs/icons/%s.jpg", entName);
+			if (access(fallback, F_OK) == 0) {
+				strncpy(title.imagePath, fallback, sizeof(title.imagePath) - 1);
+				title.imagePath[sizeof(title.imagePath) - 1] = '\0';
+				title.hasImage = true;
+			} else {
+				snprintf(fallback, sizeof(fallback), "Configs/icons/%s.png", entName);
+				if (access(fallback, F_OK) == 0) {
+					strncpy(title.imagePath, fallback, sizeof(title.imagePath) - 1);
+					title.imagePath[sizeof(title.imagePath) - 1] = '\0';
+					title.hasImage = true;
+				}
+			}
+		}
 		title.saveCount = 0;
 		title.totalSizeBytes = 0;
 		// Enumerate saves within this title

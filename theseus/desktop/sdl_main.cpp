@@ -301,6 +301,14 @@ int g_startupMode = 0;      // 0 = ask, 1 = dashboard, 2 = development
 bool g_bUseOnScreenKeyboard = false;  // when true, ignore physical keyboard during keyboard popups
 bool g_bShowBootAnimation   = true;   // play xbox_boot.mp4 once at startup before the dashboard
 
+// Legacy [Progressive] / [Dashboard Settings] sections. Historically lived
+// in Q:\System\config.ini on Xbox; collapsed into desktop.ini on desktop
+// via xboxfs.h's path alias. Tracked here so SaveDesktopSettings can
+// round-trip them (we truncate-rewrite desktop.ini on every save).
+char g_use720p[8]        = "Yes";
+char g_useProgressive[8] = "Yes";
+char g_currentSkin[64]   = "Stock";
+
 class CKeyboard;
 extern CKeyboard* g_pActiveKeyboard;
 extern void Keyboard_InsertText(CKeyboard* pKb, const char* sz);
@@ -341,6 +349,18 @@ void LoadDesktopSettings() {
             g_bUseOnScreenKeyboard = atoi(line + 20) != 0;
         else if (strncmp(line, "ShowBootAnimation=", 18) == 0)
             g_bShowBootAnimation = atoi(line + 18) != 0;
+        else if (strncmp(line, "Use 720p=", 9) == 0) {
+            strncpy(g_use720p, line + 9, sizeof(g_use720p) - 1);
+            g_use720p[sizeof(g_use720p) - 1] = 0;
+        }
+        else if (strncmp(line, "Use Progressive=", 16) == 0) {
+            strncpy(g_useProgressive, line + 16, sizeof(g_useProgressive) - 1);
+            g_useProgressive[sizeof(g_useProgressive) - 1] = 0;
+        }
+        else if (strncmp(line, "Current Skin=", 13) == 0) {
+            strncpy(g_currentSkin, line + 13, sizeof(g_currentSkin) - 1);
+            g_currentSkin[sizeof(g_currentSkin) - 1] = 0;
+        }
         else if (strncmp(line, "StartupMode=", 12) == 0) {
             if (strncmp(line + 12, "dashboard", 9) == 0) g_startupMode = 1;
             else if (strncmp(line + 12, "development", 11) == 0) g_startupMode = 2;
@@ -358,12 +378,39 @@ void LoadDesktopSettings() {
     fclose(fp);
 }
 
+// Re-read just the legacy [Progressive] / [Dashboard Settings] keys from
+// disk so SaveDesktopSettings doesn't clobber values the XAP / CSettingsFile
+// wrote between Load and Save (e.g. user changed skin via the dashboard UI,
+// then toggled CRT through Settings -- without this, the save would overwrite
+// the new skin name).
+static void RereadLegacyFromDisk() {
+    FILE* fp = fopen("Configs/desktop.ini", "r");
+    if (!fp) return;
+    char line[1024];
+    while (fgets(line, sizeof(line), fp)) {
+        char* nl = strchr(line, '\n'); if (nl) *nl = 0;
+        char* cr = strchr(line, '\r'); if (cr) *cr = 0;
+        if (strncmp(line, "Use 720p=", 9) == 0) {
+            strncpy(g_use720p, line + 9, sizeof(g_use720p) - 1);
+            g_use720p[sizeof(g_use720p) - 1] = 0;
+        } else if (strncmp(line, "Use Progressive=", 16) == 0) {
+            strncpy(g_useProgressive, line + 16, sizeof(g_useProgressive) - 1);
+            g_useProgressive[sizeof(g_useProgressive) - 1] = 0;
+        } else if (strncmp(line, "Current Skin=", 13) == 0) {
+            strncpy(g_currentSkin, line + 13, sizeof(g_currentSkin) - 1);
+            g_currentSkin[sizeof(g_currentSkin) - 1] = 0;
+        }
+    }
+    fclose(fp);
+}
+
 void SaveDesktopSettings() {
     // Ensure directory exists
     struct stat st;
     if (stat("Configs", &st) != 0) {
         system("mkdir -p \"Configs\"");
     }
+    RereadLegacyFromDisk();
     FILE* fp = fopen("Configs/desktop.ini", "w");
     if (!fp) return;
     fprintf(fp, "[Desktop]\n");
@@ -388,6 +435,12 @@ void SaveDesktopSettings() {
     fprintf(fp, "MoviesRoot=%s\n", g_moviesRoot);
     fprintf(fp, "TvRoot=%s\n", g_tvRoot);
     fprintf(fp, "TMDBKey=%s\n", g_tmdbKey);
+    // Legacy Q:\System\config.ini sections (aliased to this file by xboxfs.h).
+    fprintf(fp, "\n[Progressive]\n");
+    fprintf(fp, "Use 720p=%s\n",        g_use720p);
+    fprintf(fp, "Use Progressive=%s\n", g_useProgressive);
+    fprintf(fp, "\n[Dashboard Settings]\n");
+    fprintf(fp, "Current Skin=%s\n",    g_currentSkin);
     fclose(fp);
 }
 

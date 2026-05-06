@@ -209,6 +209,19 @@ inline const char* XboxFS_TranslatePath(const char* xboxPath) {
                 if (*p == '\\') *p = '/';
             }
 
+            // Legacy aliases. Xbox shipped engine-level settings in
+            // Q:\System\config.ini (XBE config -- resolution, current skin)
+            // and a separate XAP-level config in C:\UIX Configs\config.ini
+            // (scene wiring). On desktop the engine-level settings are
+            // collapsed into Configs/desktop.ini alongside CRT, library
+            // roots, etc., so XAP code that calls
+            // CSettingsFile::Open("Q:\\System\\Config.ini") reads + writes
+            // through the same source-of-truth file.
+            if (strcasecmp(s_buf, "Data/System/config.ini") == 0) {
+                strncpy(s_buf, "Configs/desktop.ini", sizeof(s_buf) - 1);
+                s_buf[sizeof(s_buf) - 1] = '\0';
+            }
+
             // Case-insensitive resolve (Xbox FATX doesn't care about case).
             XboxFS_ResolveCaseInsensitive(s_buf, sizeof(s_buf));
 

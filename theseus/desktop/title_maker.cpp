@@ -8,6 +8,7 @@
 #include "virtual_games.h"
 #include "udata_synth.h"
 #include "xiso.h"
+#include "launchers/steam.h"
 #include "imgui.h"
 #include "imfilebrowser.h"
 #include "stb_image.h"
@@ -849,90 +850,12 @@ void RenderTitleMaker() {
         SteamGame games[256];
         int gameCount = 0;
 
-        const char* steamPaths[] = {
-#ifdef __APPLE__
-            "/Users/%s/Library/Application Support/Steam/steamapps",
-#elif defined(_WIN32)
-            "C:\\Program Files (x86)\\Steam\\steamapps",
-            "C:\\Program Files\\Steam\\steamapps",
-#else
-            "/home/%s/.steam/steam/steamapps",
-            "/home/%s/.local/share/Steam/steamapps",
-#endif
-            NULL
-        };
-
-#ifdef _WIN32
-        const char* user = getenv("USERNAME");
-#else
-        const char* user = getenv("USER");
-#endif
-        if (!user) user = "user";
-
+        // Library discovery delegated to the Steam launcher module so
+        // path detection (Flatpak, Debian's steam-installer, Steam
+        // Deck, Windows registry, custom drives via libraryfolders.vdf)
+        // lives in one place. Title Maker just iterates the result.
         char libDirs[16][512];
-        int libCount = 0;
-
-        auto AddLibDir = [&](const char* dir) {
-            if (libCount >= 16) return;
-            for (int d = 0; d < libCount; d++) {
-                if (strcmp(libDirs[d], dir) == 0) return;
-            }
-            strncpy(libDirs[libCount], dir, 511);
-            libDirs[libCount][511] = 0;
-            libCount++;
-        };
-
-        auto ParseLibraryFoldersVdf = [&](const char* steamappsDir) {
-            char vdfPath[512];
-            snprintf(vdfPath, sizeof(vdfPath), "%s/libraryfolders.vdf", steamappsDir);
-            FILE* vdf = fopen(vdfPath, "r");
-            if (!vdf) return;
-            char line[1024];
-            while (fgets(line, sizeof(line), vdf)) {
-                char* pathKey = strstr(line, "\"path\"");
-                if (!pathKey) continue;
-                char* q1 = strchr(pathKey + 6, '"');
-                if (!q1) continue;
-                char* q2 = strchr(q1 + 1, '"');
-                if (!q2) continue;
-                *q2 = 0;
-                char extraDir[512];
-                snprintf(extraDir, sizeof(extraDir), "%s/steamapps", q1 + 1);
-                struct stat est;
-                if (stat(extraDir, &est) == 0) AddLibDir(extraDir);
-            }
-            fclose(vdf);
-        };
-
-        // If user has set an explicit Steam path, try it first.
-        // Accept either the Steam root (contains steamapps/) or the steamapps dir itself.
-        if (s_steamPath[0]) {
-            char candidate[512];
-            size_t plen = strlen(s_steamPath);
-            bool endsWithSteamapps =
-                plen >= 9 &&
-                strcasecmp(s_steamPath + plen - 9, "steamapps") == 0;
-            if (endsWithSteamapps) {
-                strncpy(candidate, s_steamPath, sizeof(candidate) - 1);
-                candidate[sizeof(candidate) - 1] = 0;
-            } else {
-                snprintf(candidate, sizeof(candidate), "%s/steamapps", s_steamPath);
-            }
-            struct stat st;
-            if (stat(candidate, &st) == 0) {
-                AddLibDir(candidate);
-                ParseLibraryFoldersVdf(candidate);
-            }
-        }
-
-        for (int p = 0; steamPaths[p] && libCount < 16; p++) {
-            char steamDir[512];
-            snprintf(steamDir, sizeof(steamDir), steamPaths[p], user);
-            struct stat st;
-            if (stat(steamDir, &st) != 0) continue;
-            AddLibDir(steamDir);
-            ParseLibraryFoldersVdf(steamDir);
-        }
+        int libCount = Steam_DiscoverLibraries(s_steamPath, libDirs, 16);
 
         auto ParseAppManifest = [&](const char* libDir, const char* fileName) {
             if (gameCount >= 256) return;

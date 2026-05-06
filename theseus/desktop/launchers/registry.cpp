@@ -71,11 +71,13 @@ void Launcher_Build(const char* spec, const char* typeHint,
 extern void Launcher_RegisterShell();
 extern void Launcher_RegisterUrl();
 extern void Launcher_RegisterXemu();
+extern void Launcher_RegisterSteam();
 
 void Launchers_RegisterAll() {
 	// Order matters only for the implicit registration ordering, not
 	// for Claims (priority sorting handles that).
 	Launcher_RegisterUrl();
 	Launcher_RegisterXemu();
+	Launcher_RegisterSteam();
 	Launcher_RegisterShell();
 }

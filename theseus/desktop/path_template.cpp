@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cctype>
+#include <cstdlib>
 
 // Globals defined in sdl_main.cpp. Each is a NUL-terminated path; an
 // empty value is fine and produces an empty substitution.
@@ -66,6 +67,29 @@ static bool AppendStr(char* out, size_t outSize, size_t* pos, const char* s, siz
 }
 } // namespace
 
+// Resolve the user's home directory at runtime. Cached on first call
+// so repeated expansions don't re-query the environment. Empty string
+// if the platform doesn't expose one (extremely unusual; fallback is
+// to leave `~` literal so the spawn fails with a recognizable error).
+static const char* HomeDir() {
+	static char s_home[512] = {0};
+	static bool s_init = false;
+	if (!s_init) {
+		s_init = true;
+		const char* h = getenv("HOME");
+#ifdef _WIN32
+		if (!h || !*h) h = getenv("USERPROFILE");
+#endif
+		if (h && *h) {
+			size_t n = strlen(h);
+			if (n >= sizeof(s_home)) n = sizeof(s_home) - 1;
+			memcpy(s_home, h, n);
+			s_home[n] = '\0';
+		}
+	}
+	return s_home;
+}
+
 int PathTemplate_Expand(const char* in, char* out, size_t outSize) {
 	if (!in || !out || outSize == 0) return -1;
 	size_t pos = 0;
@@ -73,6 +97,29 @@ int PathTemplate_Expand(const char* in, char* out, size_t outSize) {
 
 	const char* p = in;
 	while (*p) {
+		// Tilde expansion: `~/...` -> `<HOME>/...` when preceded by a
+		// path delimiter so it triggers inside quoted launch commands
+		// (e.g. `"~/Downloads/xemu/..."`) without being eaten by the
+		// shell. Fires when at start-of-string, after whitespace,
+		// after a quote, after `=`, or after `:` -- the typical
+		// places a path-bearing token starts.
+		if (*p == '~' && (p[1] == '/' || p[1] == '\\')) {
+			bool atDelim = (p == in);
+			if (!atDelim) {
+				char prev = p[-1];
+				atDelim = (prev == ' ' || prev == '\t' || prev == '"' ||
+				           prev == '\'' || prev == '=' || prev == ':');
+			}
+			if (atDelim) {
+				const char* home = HomeDir();
+				if (home && *home) {
+					if (!AppendStr(out, outSize, &pos, home, strlen(home)))
+						return (int)pos;
+					p++;
+					continue;
+				}
+			}
+		}
 		if (*p == '$') {
 			const char* nameStart = 0;
 			size_t      nameLen   = 0;

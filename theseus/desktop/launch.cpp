@@ -22,6 +22,7 @@
 #include "virtual_games.h"
 #include "stb_image.h"
 #include "path_template.h"
+#include "launchers/launcher.h"
 #include <SDL_opengl.h>
 
 extern "C" void DashAudio_MuteAll(void);
@@ -144,23 +145,30 @@ static bool Launch_DoSpawn(const char* expanded)
 	return true;
 }
 
-// Expand $VARs, log the input + post-expansion command, then spawn.
-// Both public dispatchers funnel through this so the trace, error
-// reporting, and command-form rules live in one place.
-static bool Launch_ExpandAndSpawn(const char* spec, char* expandedOut, size_t expandedSize)
+// Expand $VARs, route the spec through the matching launcher module
+// (Build()), log the trace, then spawn. Both public dispatchers funnel
+// through this so the trace, error reporting, and command-form rules
+// live in one place. typeHint is the games.ini `type=` value when the
+// caller has it; pass NULL to fall back to Claims-based detection.
+static bool Launch_ExpandAndSpawn(const char* spec, const char* typeHint,
+                                  char* finalOut, size_t finalSize)
 {
 	if (!spec || !spec[0]) return false;
-	PathTemplate_Expand(spec, expandedOut, expandedSize);
+	char expanded[2048];
+	PathTemplate_Expand(spec, expanded, sizeof(expanded));
+	Launcher_Build(expanded, typeHint, finalOut, finalSize);
 	fprintf(stderr, "[launch] in:  %s\n", spec);
-	if (strcmp(spec, expandedOut) != 0)
-		fprintf(stderr, "[launch] cmd: %s\n", expandedOut);
-	return Launch_DoSpawn(expandedOut);
+	if (strcmp(spec, expanded) != 0)
+		fprintf(stderr, "[launch] var: %s\n", expanded);
+	if (strcmp(expanded, finalOut) != 0)
+		fprintf(stderr, "[launch] cmd: %s\n", finalOut);
+	return Launch_DoSpawn(finalOut);
 }
 
 void DesktopLaunch(const char* spec)
 {
-	char expanded[2048];
-	Launch_ExpandAndSpawn(spec, expanded, sizeof(expanded));
+	char finalCmd[2048];
+	Launch_ExpandAndSpawn(spec, NULL, finalCmd, sizeof(finalCmd));
 }
 
 // Spawn called by the launch overlay tick once the fade-in completes.
@@ -168,8 +176,8 @@ void DesktopLaunch(const char* spec)
 // after a successful spawn so the game gets focus.
 static void SpawnLaunchSpec(const char* spec)
 {
-	char expanded[2048];
-	if (!Launch_ExpandAndSpawn(spec, expanded, sizeof(expanded))) return;
+	char finalCmd[2048];
+	if (!Launch_ExpandAndSpawn(spec, NULL, finalCmd, sizeof(finalCmd))) return;
 
 	extern SDL_Window* g_pSDLWindow;
 	if (g_pSDLWindow) SDL_MinimizeWindow(g_pSDLWindow);

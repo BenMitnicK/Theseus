@@ -1024,6 +1024,15 @@ int main(int argc, char* argv[]) {
 
     fprintf(stdout, "InitApp() succeeded - entering main loop\n");
 
+    // Register pluggable launcher modules (shell, url, future:
+    // xemu, retroarch, steam, ...). Done before the dispatcher
+    // is exercised so any subsequent DesktopLaunch* call goes
+    // through the registry.
+    {
+        extern void Launchers_RegisterAll();
+        Launchers_RegisterAll();
+    }
+
     // Synthesize Library/UDATA/<TitleID>/TitleMeta.xbx for every Title
     // Maker entry so the dashboard's Memory section renders title pods
     // for them. Any user-supplied TitleMeta.xbx files (real Xbox saves

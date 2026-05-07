@@ -835,8 +835,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Enable vsync
-    SDL_GL_SetSwapInterval(1);
+    // Adaptive vsync; fall back to hard vsync if unsupported.
+    if (SDL_GL_SetSwapInterval(-1) != 0)
+        SDL_GL_SetSwapInterval(1);
 
     fprintf(stdout, "UIX Desktop - SDL/OpenGL Preview Tool\n");
     fprintf(stdout, "OpenGL: %s\n", glGetString(GL_VERSION));
@@ -1370,7 +1371,8 @@ int main(int argc, char* argv[]) {
                 g_pGLContext = SDL_GL_CreateContext(g_pSDLWindow);
                 g_msaaSamples = 0;
             }
-            SDL_GL_SetSwapInterval(1);
+            if (SDL_GL_SetSwapInterval(-1) != 0)
+                SDL_GL_SetSwapInterval(1);
 
             // Enable/disable MSAA
             if (g_msaaSamples > 0) glEnable(GL_MULTISAMPLE);

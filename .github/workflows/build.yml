@@ -23,8 +23,8 @@ jobs:
       - name: Install deps
         run: brew install sdl2 sdl2_mixer mpv curl pkg-config
 
-      - name: Stub xboxfs
-        run: mkdir -p xboxfs/Q xboxfs/E xboxfs/C
+      - name: Stub Configs/Data/Library
+        run: mkdir -p Configs Data Library
 
       - name: Build
         # Homebrew curl is keg-only.
@@ -46,8 +46,8 @@ jobs:
                               libsdl2-dev libsdl2-mixer-dev libgl-dev \
                               libmpv-dev libcurl4-openssl-dev
 
-      - name: Stub xboxfs
-        run: mkdir -p xboxfs/Q xboxfs/E xboxfs/C
+      - name: Stub Configs/Data/Library
+        run: mkdir -p Configs Data Library
 
       - name: Build
         run: make -C build desktop
@@ -68,8 +68,8 @@ jobs:
                               libsdl2-dev libsdl2-mixer-dev libgl-dev \
                               libmpv-dev libcurl4-openssl-dev
 
-      - name: Stub xboxfs
-        run: mkdir -p xboxfs/Q xboxfs/E xboxfs/C
+      - name: Stub Configs/Data/Library
+        run: mkdir -p Configs Data Library
 
       - name: Build
         run: make -C build desktop
@@ -158,8 +158,8 @@ jobs:
           mv curl-*-win64-mingw/* . || true
           rmdir curl-*-win64-mingw 2>/dev/null || true
 
-      - name: Stub xboxfs
-        run: mkdir -p xboxfs/Q xboxfs/E xboxfs/C
+      - name: Stub Configs/Data/Library
+        run: mkdir -p Configs Data Library
 
       - name: Build
         run: make -C build desktop-win64

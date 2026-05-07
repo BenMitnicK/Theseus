@@ -6,7 +6,9 @@
 #include "dashapp.h"
 #include "panel_shared.h"
 #include "virtual_games.h"
+#include "udata_synth.h"
 #include "xiso.h"
+#include "launchers/steam.h"
 #include "imgui.h"
 #include "imfilebrowser.h"
 #include "stb_image.h"
@@ -101,9 +103,9 @@ static bool TM_CopyFile(const char* src, const char* dst) {
 #define TM_MAX_ICONS 512
 static int TM_ReadIconsIni(char keys[][128], char vals[][128]) {
     int count = 0;
-    const char* path = "xboxfs/C/UIX Configs/Icons.ini";
+    const char* path = "Configs/Icons.ini";
     FILE* fp = fopen(path, "r");
-    if (!fp) fp = fopen("xboxfs/C/UIX Configs/icons.ini", "r");
+    if (!fp) fp = fopen("Configs/icons.ini", "r");
     if (!fp) return 0;
     char line[256];
     while (fgets(line, sizeof(line), fp) && count < TM_MAX_ICONS) {
@@ -123,7 +125,7 @@ static int TM_ReadIconsIni(char keys[][128], char vals[][128]) {
 }
 
 static void TM_WriteIconsIni(char keys[][128], char vals[][128], int count) {
-    FILE* fp = fopen("xboxfs/C/UIX Configs/Icons.ini", "w");
+    FILE* fp = fopen("Configs/Icons.ini", "w");
     if (!fp) return;
     fprintf(fp, "[default]\n");
     for (int i = 0; i < count; i++)
@@ -525,9 +527,21 @@ void RenderTitleMaker() {
 
         // Action buttons
         if (ImGui::Button("Save", ImVec2(100, 0))) {
+            // Sanitize before storing so the dashboard's text atlas can
+            // render the result. Lossy on purpose: smart quotes, em
+            // dashes, ™/®/©, emoji, CJK all get normalized or dropped
+            // rather than rendered as tofu boxes.
+            extern int Title_SanitizeName(const char*, char*, size_t);
+            char cleanName[sizeof(s_editName)];
+            Title_SanitizeName(s_editName, cleanName, sizeof(cleanName));
+            if (cleanName[0]) {
+                strncpy(s_editName, cleanName, sizeof(s_editName) - 1);
+                s_editName[sizeof(s_editName) - 1] = '\0';
+            }
+
             VGames_Update(sel.vgIndex, s_editName, s_editTitleID, s_editLaunch,
                           g_vgames.games[sel.vgIndex].drive, s_categories[s_editCategoryIdx]);
-            VGames_Save();
+            VGames_Save(); UDataSynth_RebuildAll();
 
             // Update Icons.ini for Xbox-side compatibility
             {
@@ -560,10 +574,16 @@ void RenderTitleMaker() {
         ImGui::SameLine();
         if (ImGui::Button("Test Launch", ImVec2(110, 0)) && s_editLaunch[0]) {
             // Fire-and-forget; don't tear down the dashboard for a test launch.
+            // DesktopLaunch fills g_launchLastResult with a status string
+            // ("Launched: ..." or "CreateProcess failed (error 2): ..."),
+            // so we surface that verbatim instead of guessing success.
             extern void DesktopLaunch(const char*);
+            extern char g_launchLastResult[256];
+            g_launchLastResult[0] = 0;
             DesktopLaunch(s_editLaunch);
-            snprintf(s_statusMsg, sizeof(s_statusMsg), "Launched: %s", s_editLaunch);
-            s_statusTime = 3.0f;
+            snprintf(s_statusMsg, sizeof(s_statusMsg), "%s",
+                     g_launchLastResult[0] ? g_launchLastResult : s_editLaunch);
+            s_statusTime = 6.0f;
         }
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.1f, 0.1f, 1.0f));
@@ -626,13 +646,23 @@ void RenderTitleMaker() {
         // Determine category from filter or default to "Games"
         const char* newCat = (s_filterCategoryIdx >= 0) ? s_categories[s_filterCategoryIdx] : "Games";
 
-        VGames_Add(s_newTitleName, genID, "", "E", newCat);
-        VGames_Save();
-
-        snprintf(s_statusMsg, sizeof(s_statusMsg), "Created: %s (ID: %s)", s_newTitleName, genID);
-        s_statusTime = 3.0f;
-        s_newTitleName[0] = 0;
-        s_needsScan = true;
+        // Run the new title through the same sanitize pass that Save uses
+        // so the dashboard atlas can render it.
+        extern int Title_SanitizeName(const char*, char*, size_t);
+        char cleanNew[sizeof(s_newTitleName)];
+        Title_SanitizeName(s_newTitleName, cleanNew, sizeof(cleanNew));
+        if (!cleanNew[0]) {
+            snprintf(s_statusMsg, sizeof(s_statusMsg),
+                     "Title \"%s\" sanitizes to empty -- pick another", s_newTitleName);
+            s_statusTime = 4.0f;
+        } else {
+            VGames_Add(cleanNew, genID, "", "E", newCat);
+            VGames_Save(); UDataSynth_RebuildAll();
+            snprintf(s_statusMsg, sizeof(s_statusMsg), "Created: %s (ID: %s)", cleanNew, genID);
+            s_statusTime = 3.0f;
+            s_newTitleName[0] = 0;
+            s_needsScan = true;
+        }
     }
     ImGui::SameLine();
 
@@ -735,7 +765,7 @@ void RenderTitleMaker() {
                         }
 
                         VGames_Add(safeName, titleIdHex, xemuLaunchCmd, "E", "Games");
-                        VGames_Save();
+                        VGames_Save(); UDataSynth_RebuildAll();
 
                         // Save icon to VGAMES_ICONS/{titleID}.jpg
                         if (s_isoInfo.titleImageRGBA) {
@@ -820,90 +850,12 @@ void RenderTitleMaker() {
         SteamGame games[256];
         int gameCount = 0;
 
-        const char* steamPaths[] = {
-#ifdef __APPLE__
-            "/Users/%s/Library/Application Support/Steam/steamapps",
-#elif defined(_WIN32)
-            "C:\\Program Files (x86)\\Steam\\steamapps",
-            "C:\\Program Files\\Steam\\steamapps",
-#else
-            "/home/%s/.steam/steam/steamapps",
-            "/home/%s/.local/share/Steam/steamapps",
-#endif
-            NULL
-        };
-
-#ifdef _WIN32
-        const char* user = getenv("USERNAME");
-#else
-        const char* user = getenv("USER");
-#endif
-        if (!user) user = "user";
-
+        // Library discovery delegated to the Steam launcher module so
+        // path detection (Flatpak, Debian's steam-installer, Steam
+        // Deck, Windows registry, custom drives via libraryfolders.vdf)
+        // lives in one place. Title Maker just iterates the result.
         char libDirs[16][512];
-        int libCount = 0;
-
-        auto AddLibDir = [&](const char* dir) {
-            if (libCount >= 16) return;
-            for (int d = 0; d < libCount; d++) {
-                if (strcmp(libDirs[d], dir) == 0) return;
-            }
-            strncpy(libDirs[libCount], dir, 511);
-            libDirs[libCount][511] = 0;
-            libCount++;
-        };
-
-        auto ParseLibraryFoldersVdf = [&](const char* steamappsDir) {
-            char vdfPath[512];
-            snprintf(vdfPath, sizeof(vdfPath), "%s/libraryfolders.vdf", steamappsDir);
-            FILE* vdf = fopen(vdfPath, "r");
-            if (!vdf) return;
-            char line[1024];
-            while (fgets(line, sizeof(line), vdf)) {
-                char* pathKey = strstr(line, "\"path\"");
-                if (!pathKey) continue;
-                char* q1 = strchr(pathKey + 6, '"');
-                if (!q1) continue;
-                char* q2 = strchr(q1 + 1, '"');
-                if (!q2) continue;
-                *q2 = 0;
-                char extraDir[512];
-                snprintf(extraDir, sizeof(extraDir), "%s/steamapps", q1 + 1);
-                struct stat est;
-                if (stat(extraDir, &est) == 0) AddLibDir(extraDir);
-            }
-            fclose(vdf);
-        };
-
-        // If user has set an explicit Steam path, try it first.
-        // Accept either the Steam root (contains steamapps/) or the steamapps dir itself.
-        if (s_steamPath[0]) {
-            char candidate[512];
-            size_t plen = strlen(s_steamPath);
-            bool endsWithSteamapps =
-                plen >= 9 &&
-                strcasecmp(s_steamPath + plen - 9, "steamapps") == 0;
-            if (endsWithSteamapps) {
-                strncpy(candidate, s_steamPath, sizeof(candidate) - 1);
-                candidate[sizeof(candidate) - 1] = 0;
-            } else {
-                snprintf(candidate, sizeof(candidate), "%s/steamapps", s_steamPath);
-            }
-            struct stat st;
-            if (stat(candidate, &st) == 0) {
-                AddLibDir(candidate);
-                ParseLibraryFoldersVdf(candidate);
-            }
-        }
-
-        for (int p = 0; steamPaths[p] && libCount < 16; p++) {
-            char steamDir[512];
-            snprintf(steamDir, sizeof(steamDir), steamPaths[p], user);
-            struct stat st;
-            if (stat(steamDir, &st) != 0) continue;
-            AddLibDir(steamDir);
-            ParseLibraryFoldersVdf(steamDir);
-        }
+        int libCount = Steam_DiscoverLibraries(s_steamPath, libDirs, 16);
 
         auto ParseAppManifest = [&](const char* libDir, const char* fileName) {
             if (gameCount >= 256) return;
@@ -968,7 +920,7 @@ void RenderTitleMaker() {
             // create here. harddrive.xap reads this file to map displayed
             // title names back to TitleIDs for icon lookup; without it, the
             // imported titles render with no icon even though the .jpg file
-            // is sitting in xboxfs/C/UIX Configs/icons/.
+            // is sitting in Configs/icons/.
             static char iconKeys[TM_MAX_ICONS][128];
             static char iconVals[TM_MAX_ICONS][128];
             int iconCount = TM_ReadIconsIni(iconKeys, iconVals);
@@ -1062,7 +1014,7 @@ void RenderTitleMaker() {
                 }
             }
 
-            VGames_Save();
+            VGames_Save(); UDataSynth_RebuildAll();
             VGames_Reload();
             TM_WriteIconsIni(iconKeys, iconVals, iconCount);
 
@@ -1071,6 +1023,43 @@ void RenderTitleMaker() {
             s_needsScan = true;
         }
     }
+
+    // Bulk-cleanup button: re-runs Title_SanitizeName over every existing
+    // games.ini entry. Useful for libraries imported before the sanitize
+    // pipeline existed, or after refining the substitution table -- one
+    // click reconciles the dashboard view to what the atlas can actually
+    // render.
+    ImGui::SameLine();
+    if (ImGui::Button("Fix Names")) {
+        extern int  Title_SanitizeName(const char*, char*, size_t);
+        extern bool Title_NeedsSanitize(const char*);
+        int fixed = 0;
+        for (int i = 0; i < g_vgames.count; i++) {
+            VirtualGame& g = g_vgames.games[i];
+            if (!g.valid) continue;
+            if (!Title_NeedsSanitize(g.name)) continue;
+            char clean[sizeof(g.name)];
+            Title_SanitizeName(g.name, clean, sizeof(clean));
+            if (clean[0] && strcmp(clean, g.name) != 0) {
+                strncpy(g.name, clean, sizeof(g.name) - 1);
+                g.name[sizeof(g.name) - 1] = '\0';
+                fixed++;
+            }
+        }
+        if (fixed > 0) {
+            VGames_Save(); UDataSynth_RebuildAll();
+            VGames_Reload();
+            s_needsScan = true;
+        }
+        snprintf(s_statusMsg, sizeof(s_statusMsg),
+                 fixed > 0 ? "Sanitized %d title%s" : "All titles already clean",
+                 fixed, fixed == 1 ? "" : "s");
+        s_statusTime = 4.0f;
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Re-run name sanitization across every games.ini entry.\n"
+                          "Strips smart quotes, em dashes, ™/®/©, emoji, CJK\n"
+                          "down to what the dashboard's text atlas can render.");
 
     // File browser callbacks
     s_iconBrowser.Display();

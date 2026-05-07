@@ -21,6 +21,8 @@
 
 #include "virtual_games.h"
 #include "stb_image.h"
+#include "path_template.h"
+#include "launchers/launcher.h"
 #include <SDL_opengl.h>
 
 extern "C" void DashAudio_MuteAll(void);
@@ -73,19 +75,34 @@ static void ExecLaunch(const char* spec)
 }
 #endif
 
-void DesktopLaunch(const char* spec)
-{
-	if (!spec || !spec[0]) return;
+// Last-launch diagnostic captured by Launch_DoSpawn so Title Maker's
+// "Test Launch" button can surface it as a status toast instead of users
+// having to dig in stderr.
+char g_launchLastResult[256] = "";
 
-	fprintf(stderr, "[launch] %s\n", spec);
+// Single shared spawn implementation. Both DesktopLaunch (fire-and-forget,
+// e.g. Title Maker Test Launch) and SpawnLaunchSpec (overlay-driven game
+// launch) call this. Returns true if the OS handed us back a process /
+// shell-exec handle; the parent doesn't wait on the child either way.
+static bool Launch_DoSpawn(const char* expanded)
+{
+	if (!expanded || !*expanded) return false;
 
 #ifdef _WIN32
 	// URLs go through ShellExecute (handles steam:// via the registered
 	// handler, http(s) via default browser, etc.). Raw commands run
-	// through cmd /C in detached mode.
-	if (IsUrl(spec))
+	// through cmd /S /C -- /S tells cmd to treat the outermost quotes
+	// as literal command boundaries instead of trying to be clever,
+	// which is what breaks UNC paths and quoted args.
+	if (IsUrl(expanded))
 	{
-		ShellExecuteA(NULL, "open", spec, NULL, NULL, SW_SHOWNORMAL);
+		HINSTANCE rc = ShellExecuteA(NULL, "open", expanded, NULL, NULL, SW_SHOWNORMAL);
+		if ((INT_PTR)rc <= 32) {
+			snprintf(g_launchLastResult, sizeof(g_launchLastResult),
+			         "ShellExecute failed (code %ld): %s", (long)(INT_PTR)rc, expanded);
+			fprintf(stderr, "[launch] %s\n", g_launchLastResult);
+			return false;
+		}
 	}
 	else
 	{
@@ -93,74 +110,74 @@ void DesktopLaunch(const char* spec)
 		si.cb = sizeof(si);
 		PROCESS_INFORMATION pi = {};
 		char cmd[2048];
-		snprintf(cmd, sizeof(cmd), "cmd /C %s", spec);
-		if (CreateProcessA(NULL, cmd, NULL, NULL, FALSE,
-		                   DETACHED_PROCESS, NULL, NULL, &si, &pi))
+		snprintf(cmd, sizeof(cmd), "cmd /S /C \"%s\"", expanded);
+		if (!CreateProcessA(NULL, cmd, NULL, NULL, FALSE,
+		                    DETACHED_PROCESS, NULL, NULL, &si, &pi))
 		{
-			CloseHandle(pi.hProcess);
-			CloseHandle(pi.hThread);
+			DWORD err = GetLastError();
+			snprintf(g_launchLastResult, sizeof(g_launchLastResult),
+			         "CreateProcess failed (error %lu): %s", err, expanded);
+			fprintf(stderr, "[launch] %s\n", g_launchLastResult);
+			return false;
 		}
+		CloseHandle(pi.hProcess);
+		CloseHandle(pi.hThread);
 	}
 #else
 	pid_t pid = fork();
 	if (pid == 0)
 	{
-		ExecLaunch(spec);
-		_exit(127);
-	}
-	// Parent: don't wait. Fire-and-forget.
-#endif
-}
-
-// Actually fork/spawn the launch spec. Called by the overlay tick once the
-// fade-in has completed. Same mechanics as before, just split out so the
-// overlay can drive timing.
-static void SpawnLaunchSpec(const char* spec)
-{
-	if (!spec || !spec[0]) return;
-
-	fprintf(stderr, "[launch] Spawning: %s\n", spec);
-
-#ifndef _WIN32
-	pid_t pid = fork();
-	if (pid == 0)
-	{
-		ExecLaunch(spec);
+		ExecLaunch(expanded);
 		_exit(127);
 	}
 	else if (pid < 0)
 	{
-		fprintf(stderr, "[launch] fork() failed: %s\n", strerror(errno));
-		return;
+		snprintf(g_launchLastResult, sizeof(g_launchLastResult),
+		         "fork() failed: %s", strerror(errno));
+		fprintf(stderr, "[launch] %s\n", g_launchLastResult);
+		return false;
 	}
-#else
-	STARTUPINFOA si = {};
-	si.cb = sizeof(si);
-	PROCESS_INFORMATION pi = {};
-	BOOL ok = FALSE;
-
-	if (IsUrl(spec))
-	{
-		char cmd[2048];
-		snprintf(cmd, sizeof(cmd), "cmd /C start \"\" \"%s\"", spec);
-		ok = CreateProcessA(NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
-	}
-	else
-	{
-		char* cmdCopy = _strdup(spec);
-		ok = CreateProcessA(NULL, cmdCopy, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
-		free(cmdCopy);
-	}
-
-	if (!ok)
-	{
-		fprintf(stderr, "[launch] CreateProcess failed: %lu\n", GetLastError());
-		return;
-	}
-
-	CloseHandle(pi.hProcess);
-	CloseHandle(pi.hThread);
+	// Parent: don't wait. Fire-and-forget.
 #endif
+
+	snprintf(g_launchLastResult, sizeof(g_launchLastResult),
+	         "Launched: %s", expanded);
+	return true;
+}
+
+// Expand $VARs, route the spec through the matching launcher module
+// (Build()), log the trace, then spawn. Both public dispatchers funnel
+// through this so the trace, error reporting, and command-form rules
+// live in one place. typeHint is the games.ini `type=` value when the
+// caller has it; pass NULL to fall back to Claims-based detection.
+static bool Launch_ExpandAndSpawn(const char* spec, const char* typeHint,
+                                  char* finalOut, size_t finalSize)
+{
+	if (!spec || !spec[0]) return false;
+	char expanded[2048];
+	PathTemplate_Expand(spec, expanded, sizeof(expanded));
+	Launcher_Build(expanded, typeHint, finalOut, finalSize);
+	fprintf(stderr, "[launch] in:  %s\n", spec);
+	if (strcmp(spec, expanded) != 0)
+		fprintf(stderr, "[launch] var: %s\n", expanded);
+	if (strcmp(expanded, finalOut) != 0)
+		fprintf(stderr, "[launch] cmd: %s\n", finalOut);
+	return Launch_DoSpawn(finalOut);
+}
+
+void DesktopLaunch(const char* spec)
+{
+	char finalCmd[2048];
+	Launch_ExpandAndSpawn(spec, NULL, finalCmd, sizeof(finalCmd));
+}
+
+// Spawn called by the launch overlay tick once the fade-in completes.
+// Identical to DesktopLaunch except we minimize the dashboard window
+// after a successful spawn so the game gets focus.
+static void SpawnLaunchSpec(const char* spec)
+{
+	char finalCmd[2048];
+	if (!Launch_ExpandAndSpawn(spec, NULL, finalCmd, sizeof(finalCmd))) return;
 
 	extern SDL_Window* g_pSDLWindow;
 	if (g_pSDLWindow) SDL_MinimizeWindow(g_pSDLWindow);
@@ -215,7 +232,7 @@ void LaunchOverlay_Reset()
 	s_pendingSpec[0] = 0;
 }
 
-// Lazy-load the Xbox logo PNG (xboxfs/C/UIX Configs/xboxlogo.png) into a
+// Lazy-load the Xbox logo PNG (Configs/xboxlogo.png) into a
 // GL texture and cache the handle for the rest of the process. The PNG is
 // pre-decoded from Stock's xboxlogo.xbx via OXDK xbx-convert and lives in
 // the desktop-only UIX Configs directory; loading raw PNG with stb_image
@@ -230,7 +247,7 @@ unsigned int LaunchOverlay_LogoGLTex(int* outW, int* outH)
 
 	if (!s_loadAttempted) {
 		s_loadAttempted = true;
-		const char* path = "xboxfs/C/UIX Configs/xboxlogo.png";
+		const char* path = "Configs/xboxlogo.png";
 		int w = 0, h = 0, ch = 0;
 		unsigned char* pixels = stbi_load(path, &w, &h, &ch, 4);
 		if (pixels) {
@@ -312,49 +329,6 @@ void DesktopLaunchGame(const char* spec)
 // source, default.uixshortcut files are the fallback.
 // ============================================================================
 
-static const struct { int partition; const char* drive; } s_partitionDrives[] = {
-	{ 1, "E" }, { 2, "C" }, { 6, "F" }, { 7, "G" }, { 8, "R" }, { 9, "S" }
-};
-
-static bool ConvertXboxPathToLocal(const char* xboxPath, char* outBuf, size_t outSize)
-{
-	if (!xboxPath || !*xboxPath || outSize == 0) return false;
-
-	// Drive-letter form: "X:\..." or "X:/..."
-	const char* colon = strchr(xboxPath, ':');
-	if (colon && (colon[1] == '\\' || colon[1] == '/')) {
-		int driveLen = (int)(colon - xboxPath);
-		if (driveLen > 0 && driveLen < 32) {
-			char drive[32];
-			memcpy(drive, xboxPath, driveLen);
-			drive[driveLen] = '\0';
-			snprintf(outBuf, outSize, "xboxfs/%s/%s", drive, colon + 2);
-			for (char* p = outBuf; *p; p++) if (*p == '\\') *p = '/';
-			return true;
-		}
-	}
-
-	// Device-path form: "\Device\Harddisk0\PartitionN\..."
-	static const char kPrefix[] = "\\Device\\Harddisk0\\Partition";
-	const size_t kPrefixLen = sizeof(kPrefix) - 1;
-	if (strncmp(xboxPath, kPrefix, kPrefixLen) == 0) {
-		const char* p = xboxPath + kPrefixLen;
-		int partNum = 0;
-		while (*p >= '0' && *p <= '9') { partNum = partNum * 10 + (*p - '0'); p++; }
-		if (*p == '\\' || *p == '/') p++;
-		const char* drive = NULL;
-		for (size_t i = 0; i < sizeof(s_partitionDrives) / sizeof(s_partitionDrives[0]); i++) {
-			if (s_partitionDrives[i].partition == partNum) { drive = s_partitionDrives[i].drive; break; }
-		}
-		if (!drive) return false;
-		snprintf(outBuf, outSize, "xboxfs/%s/%s", drive, p);
-		for (char* q = outBuf; *q; q++) if (*q == '\\') *q = '/';
-		return true;
-	}
-
-	return false;
-}
-
 static bool ReadShortcutLaunch(const char* localFolder, char* outCmd, size_t outSize)
 {
 	char shortcutPath[512];
@@ -386,11 +360,17 @@ void DesktopLaunchTitle(const char* devicePath)
 		return;
 	}
 
-	char localPath[512];
-	if (!ConvertXboxPathToLocal(devicePath, localPath, sizeof(localPath))) {
+	// Translate via the canonical xboxfs.h resolver -- handles both
+	// drive-letter ("E:\...") and device-path ("\Device\Harddisk0\...")
+	// forms and routes to Library/Configs/Data as appropriate.
+	const char* translated = XboxFS_TranslatePath(devicePath);
+	if (!translated || !*translated) {
 		fprintf(stderr, "[launch] DesktopLaunchTitle: unrecognized path format: %s\n", devicePath);
 		return;
 	}
+	char localPath[512];
+	strncpy(localPath, translated, sizeof(localPath) - 1);
+	localPath[sizeof(localPath) - 1] = '\0';
 
 	// Strip trailing slash for VGames matching.
 	size_t pathLen = strlen(localPath);

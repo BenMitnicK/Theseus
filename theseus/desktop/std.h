@@ -13,7 +13,7 @@
 // D3D8 type stubs (no-op interfaces, math types, enums)
 #include "d3d8_sdl.h"
 
-// Filesystem path translation (Q:\ -> ./xboxfs/Q/)
+// Filesystem path translation (Q:\ -> ./Data/)
 #include "xboxfs.h"
 
 // Standard C/C++ headers (already included by platform_shim.h, but

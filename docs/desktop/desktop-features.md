@@ -19,9 +19,9 @@ Games appear on the dashboard organized by category (Games, Applications, Homebr
 
 ### How It Works (Under the Hood)
 
-The Title Maker writes to `games.ini`, which the virtual filesystem layer reads at runtime. When the dashboard scans for games (via `FindFirstFile`), the platform layer injects virtual directory entries from `games.ini` alongside any real folders in `xboxfs/E/Games/`. The dashboard doesn't know the difference: it sees what looks like real Xbox game folders.
+The Title Maker writes to `games.ini`, which the virtual filesystem layer reads at runtime. When the dashboard scans for games (via `FindFirstFile`), the platform layer injects virtual directory entries from `games.ini` alongside any real folders in `Library/Games/`. The dashboard doesn't know the difference: it sees what looks like real Xbox game folders.
 
-Icons are stored in `xboxfs/C/UIX Configs/icons/` and mapped via `Icons.ini`. The dashboard's icon selector searches both UDATA title images and the desktop icon database.
+Icons are stored in `Configs/icons/` and mapped via `Icons.ini`. The dashboard's icon selector searches both UDATA title images and the desktop icon database.
 
 ### Launching
 
@@ -45,7 +45,7 @@ The Title Maker is the central tool for managing your game library. It supports 
 
 ## Save Game Browser
 
-The dashboard's Memory section is fully functional on desktop. It reads real Xbox save data from `xboxfs/E/UDATA/` (or from a mounted qcow2 FATX image) and renders the same save game browser as the original Xbox, complete with:
+The dashboard's Memory section is fully functional on desktop. It reads real Xbox save data from `Library/UDATA/` (or from a mounted qcow2 FATX image) and renders the same save game browser as the original Xbox, complete with:
 
 - **Title pods** with game icons loaded from `TitleImage.xbx`
 - **Title headers** with game names parsed from `TitleMeta.xbx` (UTF-16LE with localization support)
@@ -56,7 +56,7 @@ The dashboard's Memory section is fully functional on desktop. It reads real Xbo
 
 The rendering is adapted from the Xbox source's custom `RenderLoop`: it positions pods, headers, and icon rows using D3D transformation matrices rather than the normal scene graph. This matches the Xbox's approach where `SavedGameGrid` was a separate rendering subsystem.
 
-To test with your own saves, copy Xbox `UDATA` folders into `xboxfs/E/UDATA/`. Each title folder should contain `TitleMeta.xbx` (the game name) and optionally `TitleImage.xbx` (the icon), with save subfolders containing `SaveMeta.xbx`.
+To test with your own saves, copy Xbox `UDATA` folders into `Library/UDATA/`. Each title folder should contain `TitleMeta.xbx` (the game name) and optionally `TitleImage.xbx` (the icon), with save subfolders containing `SaveMeta.xbx`.
 
 ## Development Tools
 
@@ -165,7 +165,7 @@ Useful when running fullscreen and you want a clean viewport.
 
 ## Configuration
 
-Desktop-specific settings are stored in `xboxfs/C/UIX Configs/desktop.ini`:
+Desktop-specific settings are stored in `Configs/desktop.ini`:
 
 ```ini
 XemuPath=/Applications/xemu.app

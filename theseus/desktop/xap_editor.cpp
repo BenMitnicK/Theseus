@@ -317,7 +317,7 @@ void RenderXAPEditor() {
         static bool scanned = false;
         if (!scanned) {
             xapFileCount = 0;
-            XapEditor_ScanDir("xboxfs/Q/Xips", xapFiles, &xapFileCount, 256);
+            XapEditor_ScanDir("Data/Xips", xapFiles, &xapFileCount, 256);
             scanned = true;
         }
 
@@ -369,7 +369,7 @@ void RenderXAPEditor() {
                     bool isCurrent = (g_editingInlineNode == NULL &&
                                      strstr(g_xapEditorPath, "default/default.xap") != NULL);
                     if (ImGui::MenuItem("Main Dashboard (root)", NULL, isCurrent)) {
-                        XapEditor_LoadFile("xboxfs/Q/Xips/default/default.xap");
+                        XapEditor_LoadFile("Data/Xips/default/default.xap");
                         g_editingInlineNode = NULL;
                         g_editingInlineUrl[0] = '\0';
                     }
@@ -382,7 +382,7 @@ void RenderXAPEditor() {
                         bool cur = (g_editingInlineNode == (CNode*)s_cachedInlines[i].node);
                         if (ImGui::MenuItem(label, NULL, cur)) {
                             char xapPath[512];
-                            snprintf(xapPath, sizeof(xapPath), "xboxfs/Q/Xips/default/%s", s_cachedInlines[i].url);
+                            snprintf(xapPath, sizeof(xapPath), "Data/Xips/default/%s", s_cachedInlines[i].url);
                             XapEditor_LoadFile(xapPath);
                             g_editingInlineNode = (CNode*)s_cachedInlines[i].node;
                             strncpy(g_editingInlineUrl, s_cachedInlines[i].url, sizeof(g_editingInlineUrl) - 1);
@@ -402,7 +402,7 @@ void RenderXAPEditor() {
                 for (int i = 0; i < xapFileCount; i++) {
                     const char* path = xapFiles[i];
                     const char* rel = path;
-                    if (strncmp(rel, "xboxfs/Q/Xips/", 14) == 0) rel += 14;
+                    if (strncmp(rel, "Data/Xips/", 14) == 0) rel += 14;
                     char dir[512];
                     strncpy(dir, rel, sizeof(dir) - 1);
                     dir[sizeof(dir) - 1] = '\0';
@@ -436,7 +436,7 @@ void RenderXAPEditor() {
         // Status bar
         {
             const char* displayPath = g_xapEditorPath;
-            if (strncmp(displayPath, "xboxfs/Q/Xips/", 14) == 0) displayPath += 14;
+            if (strncmp(displayPath, "Data/Xips/", 14) == 0) displayPath += 14;
 
             if (g_xapEditorPath[0]) {
                 ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%s", displayPath);

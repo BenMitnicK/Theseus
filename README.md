@@ -59,7 +59,9 @@ theseus/
   toolbox/        PrometheOS-derived FTP/drive/network toolbox
 theseuslib/       Shared C library for the dashboard's link-time ABI (xiso parser, xip parser, xapi extensions)
 build/            Unified build system (Xbox cross-compile + native desktop + Windows cross)
-xboxfs/           Virtualized Xbox filesystem for desktop builds (Q:\, E:\, C:\)
+Configs/          Desktop runtime: dashboard configs, virtual game DB, version stamp (Xbox C:\UIX Configs\)
+Data/             Desktop runtime: shipped assets -- XIPs, skins, fonts, audio, language (Xbox Q:\)
+Library/          Desktop runtime: game library + save data (Xbox E:\)
 docs/             XAP contract reference, decomp notes, desktop port docs
 ```
 
@@ -105,7 +107,7 @@ Output lands under `~/builds/theseus/` by default (override with `BUILDS_ROOT`):
 The Xbox runs the retail build. The dashboard expects two things to be in place: the data folder next to the XBE, and a config folder on `C:\`.
 
 1. **Drop the XBE somewhere on the Xbox HDD**, for example `E:\Dashboards\Theseus\default.xbe`. Anywhere works as long as the data folder lives next to it.
-2. **Copy `xboxfs/Q/` from this repo to that same folder, renamed to `uixdata`.** Final layout:
+2. **Copy `Data/` from this repo to that same folder, renamed to `uixdata`.** Final layout:
    ```
    E:\Dashboards\Theseus\
      default.xbe
@@ -121,12 +123,12 @@ The Xbox runs the retail build. The dashboard expects two things to be in place:
        System\
        Xips\
    ```
-   On Xbox the data folder is named `uixdata`, not `Q`. The `xboxfs/Q/` name only exists for the desktop build's drive-letter virtualization.
-3. **Copy `xboxfs/C/UIX Configs/` to `C:\UIX Configs\` on the Xbox HDD.** This holds the launcher cache and INI configuration the dashboard reads at boot.
+   On Xbox the data folder is named `uixdata`. The desktop build calls the same content `Data/` (it's what `Q:\` resolves to via the path translator).
+3. **Copy `Configs/` to `C:\UIX Configs\` on the Xbox HDD.** This holds the launcher cache and INI configuration the dashboard reads at boot.
 
 If the XBE boots without `uixdata/` next to it or without `C:\UIX Configs\` on the HDD, the dashboard drops into the panic / recovery screen with a crash log explaining what's missing. FTP comes up either way, so you can push the missing folders over the wire and reboot.
 
-`xboxfs/E/` mirrors what a stock Xbox `E:\` looks like (Applications, Dashboards, Emulators, Games, TDATA). It's there so the desktop build has a sane filesystem to enumerate against. On real hardware your Xbox already has `E:\`; nothing to copy.
+`Library/` mirrors what a stock Xbox `E:\` looks like (Applications, Dashboards, Emulators, Games, TDATA). It exists so the desktop build has a sane filesystem to enumerate against. On real hardware your Xbox already has `E:\`; nothing to copy.
 
 ### Status
 
@@ -165,7 +167,7 @@ The Xbox build links clean via the macOS / Linux cross-compile and boots on orig
 
 ## The Desktop Port
 
-UIX Desktop takes the Theseus engine and runs it natively on macOS, Linux, and (in-progress) Windows. Same scene graph, same script VM, same XAP scenes from the XIP archives, no emulation. The Xbox D3D8 interface is reimplemented on top of OpenGL 3.2 and GLSL, the Win32 type system is reimplemented in `sdl_platform.h`, and the Xbox drive-letter filesystem is virtualized over a local `xboxfs/` directory.
+UIX Desktop takes the Theseus engine and runs it natively on macOS, Linux, and (in-progress) Windows. Same scene graph, same script VM, same XAP scenes from the XIP archives, no emulation. The Xbox D3D8 interface is reimplemented on top of OpenGL 3.2 and GLSL, the Win32 type system is reimplemented in `sdl_platform.h`, and Xbox drive letters are virtualized to three top-level folders next to the binary (`Configs/`, `Data/`, `Library/`).
 
 ### Features
 
@@ -221,7 +223,7 @@ cd build && make desktop
 ~/builds/theseus/desktop/theseus.exe
 ```
 
-The output `.exe` is a real PE32+ x86-64 binary. Ship it alongside the MSYS2-runtime DLLs (SDL2.dll, SDL2_mixer.dll, libmpv-2.dll, libcurl-4.dll, etc. — `ldd theseus.exe` from inside MSYS2 lists them) and the `xboxfs/` directory.
+The output `.exe` is a real PE32+ x86-64 binary. Ship it alongside the MSYS2-runtime DLLs (SDL2.dll, SDL2_mixer.dll, libmpv-2.dll, libcurl-4.dll, etc. — `ldd theseus.exe` from inside MSYS2 lists them) and the `Configs/`, `Data/`, `Library/` folders.
 
 **Windows (cross-compile from macOS/Linux):**
 
@@ -268,7 +270,7 @@ For testers running aarch64 Linux on devices like jailbroken Switches, Pi 4/5 bo
 
 ### Data Files
 
-The `xboxfs/` directory holds dashboard data (XIP archives, skins, fonts, audio, language files) for the desktop build to consume. The build system copies it into the output directory automatically so each build drop is self-contained. The Xbox build does not need this directory; it uses the same data shipped on the Xbox HDD via real drive letters.
+The `Configs/`, `Data/`, and `Library/` directories hold dashboard data (configs, XIP archives, skins, fonts, audio, language files, virtual game library) for the desktop build to consume. The build system copies them into the output directory automatically so each build drop is self-contained. The Xbox build does not need them; it uses the same data shipped on the Xbox HDD via real drive letters.
 
 ### Controls (desktop)
 
@@ -400,4 +402,4 @@ Inherited code keeps its origin license intact:
 
 A complete catalog of inherited code, linked libraries, and their respective licenses is in [`LICENSE-THIRD-PARTY.md`](LICENSE-THIRD-PARTY.md).
 
-The XIPs and skin assets in `xboxfs/` are authored by UIX Lite and represent TeamUIX modifications of dashboard scripts present on every retail Xbox console. UIX Lite's modifications ship under GPL-3.0-or-later; the underlying script formats are referenced for compatibility and preservation.
+The XIPs and skin assets shipped in `Data/` are authored by UIX Lite and represent TeamUIX modifications of dashboard scripts present on every retail Xbox console. UIX Lite's modifications ship under GPL-3.0-or-later; the underlying script formats are referenced for compatibility and preservation.

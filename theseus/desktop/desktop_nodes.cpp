@@ -37,8 +37,8 @@ static const char* ResolveAudioURL(const TCHAR* url)
 		return translated;
 	}
 
-	// Relative path; prepend xboxfs/Q/
-	snprintf(s_path, sizeof(s_path), "xboxfs/Q/%s", url);
+	// Relative path; prepend Data/
+	snprintf(s_path, sizeof(s_path), "Data/%s", url);
 	// Convert backslashes
 	for (char* p = s_path; *p; p++)
 		if (*p == '\\') *p = '/';
@@ -1791,7 +1791,7 @@ static void EnumerateTitles()
 	if (EnumerateTitlesFromFATX()) return;
 
 	// Fall back to xboxfs host directory
-	const char* udataPath = "xboxfs/E/UDATA";
+	const char* udataPath = "Library/UDATA";
 
 	// Helper lambda: process a single title directory entry
 	auto ProcessTitleEntry = [&](const char* entName) {
@@ -1811,8 +1811,39 @@ static void EnumerateTitles()
 		snprintf(xboxMetaPath, sizeof(xboxMetaPath), "E:\\UDATA\\%s\\TitleMeta.xbx", entName);
 		if (!ParseXboxMetaValue(xboxMetaPath, "TitleName", title.titleName, sizeof(title.titleName)))
 			strncpy(title.titleName, entName, sizeof(title.titleName) - 1);
-		snprintf(title.imagePath, sizeof(title.imagePath), "%s/TitleImage.xbx", titlePath);
-		title.hasImage = (access(title.imagePath, F_OK) == 0);
+		// imagePath is stored as an Xbox-style path (E:\UDATA\... or
+		// C:\icons\...) because the rendering pipeline runs it through
+		// MakeAbsoluteURL, which only treats a URL as already-absolute
+		// when it contains a colon. A host-style path like
+		// "Library/UDATA/.../TitleImage.xbx" would otherwise get
+		// prepended with g_szCurDir (currently Q:\Xips\Memory_Files2\
+		// during the Memory scene) and resolve to the wrong tree.
+		// We do the access() probes against host-style forms and only
+		// commit the Xbox-style equivalent into imagePath on success.
+		title.hasImage = false;
+		char hostProbe[1024];
+		snprintf(hostProbe, sizeof(hostProbe), "%s/TitleImage.xbx", titlePath);
+		if (access(hostProbe, F_OK) == 0) {
+			snprintf(title.imagePath, sizeof(title.imagePath),
+			         "E:\\UDATA\\%s\\TitleImage.xbx", entName);
+			title.hasImage = true;
+		} else {
+			// Synthetic UDATA entries fall back to Configs/icons/<TitleID>.
+			// xboxfs.h's C: routing maps "C:\icons\..." -> "Configs/icons/...".
+			snprintf(hostProbe, sizeof(hostProbe), "Configs/icons/%s.jpg", entName);
+			if (access(hostProbe, F_OK) == 0) {
+				snprintf(title.imagePath, sizeof(title.imagePath),
+				         "C:\\icons\\%s.jpg", entName);
+				title.hasImage = true;
+			} else {
+				snprintf(hostProbe, sizeof(hostProbe), "Configs/icons/%s.png", entName);
+				if (access(hostProbe, F_OK) == 0) {
+					snprintf(title.imagePath, sizeof(title.imagePath),
+					         "C:\\icons\\%s.png", entName);
+					title.hasImage = true;
+				}
+			}
+		}
 		title.saveCount = 0;
 		title.totalSizeBytes = 0;
 		// Enumerate saves within this title
@@ -1964,11 +1995,11 @@ static void LoadDesktopIcons()
 
 		// Check if icon file exists
 		char iconPath[512];
-		snprintf(iconPath, sizeof(iconPath), "xboxfs/C/UIX Configs/icons/%s.jpg", g_vgames.games[i].titleID);
+		snprintf(iconPath, sizeof(iconPath), "Configs/icons/%s.jpg", g_vgames.games[i].titleID);
 		struct stat _ist;
 		if (stat(iconPath, &_ist) != 0) {
 			// Try .png
-			snprintf(iconPath, sizeof(iconPath), "xboxfs/C/UIX Configs/icons/%s.png", g_vgames.games[i].titleID);
+			snprintf(iconPath, sizeof(iconPath), "Configs/icons/%s.png", g_vgames.games[i].titleID);
 			if (stat(iconPath, &_ist) != 0) continue;
 		}
 
@@ -2105,7 +2136,7 @@ public:
 				         t.titleID, t.saves[i].folderName);
 				// Check if save-specific image exists, fall back to title root
 				char hostPath[512];
-				snprintf(hostPath, sizeof(hostPath), "xboxfs/E/UDATA/%s/%s/SaveImage.xbx",
+				snprintf(hostPath, sizeof(hostPath), "Library/UDATA/%s/%s/SaveImage.xbx",
 				         t.titleID, t.saves[i].folderName);
 				struct stat _st;
 				if (stat(hostPath, &_st) != 0) {
@@ -2158,10 +2189,18 @@ public:
 			// Render title pod
 			if (bRender && y - 0.25f < 0.5f && m_pod) {
 				static char szPodImg[512];
-				if (nTitle >= 0 && nTitle < s_titleCount && s_titles[nTitle].hasImage)
-					snprintf(szPodImg, sizeof(szPodImg), "E:\\UDATA\\%s\\TitleImage.xbx", s_titles[nTitle].titleID);
-				else
+				if (nTitle >= 0 && nTitle < s_titleCount && s_titles[nTitle].hasImage) {
+					// imagePath is already host-relative (set in
+					// ProcessTitleEntry) -- either Library/UDATA/.../TitleImage.xbx
+					// for real Xbox saves or Configs/icons/<TitleID>.{jpg,png}
+					// for synthesized title pods. Pass it through directly
+					// instead of rebuilding an Xbox-style path that only
+					// resolves for the .xbx case.
+					strncpy(szPodImg, s_titles[nTitle].imagePath, sizeof(szPodImg) - 1);
+					szPodImg[sizeof(szPodImg) - 1] = 0;
+				} else {
 					strcpy(szPodImg, "xboxlogo128.xbx");
+				}
 				g_szCurTitleImage = szPodImg;
 				D3DXMatrixTranslation(&mat2, -0.3292f, y, -0.0271f);
 				D3DXMatrixMultiply(&mat2, &mat, &mat2);
@@ -2326,8 +2365,12 @@ public:
 		LoadDesktopIcons();
 		static char imgPath[512];
 		if (m_curTitle >= 0 && m_curTitle < s_titleCount && s_titles[m_curTitle].hasImage) {
-			// UDATA title image
-			snprintf(imgPath, sizeof(imgPath), "E:\\UDATA\\%s\\TitleImage.xbx", s_titles[m_curTitle].titleID);
+			// imagePath was set in ProcessTitleEntry to either the real
+			// TitleImage.xbx or the Configs/icons/<TitleID>.{jpg,png}
+			// fallback. Pass it through directly so synthesized titles
+			// surface their JPG icons here too.
+			strncpy(imgPath, s_titles[m_curTitle].imagePath, sizeof(imgPath) - 1);
+			imgPath[sizeof(imgPath) - 1] = 0;
 			g_szSelTitleImage = imgPath;
 		} else if (m_curTitle >= s_titleCount && m_curTitle < s_titleCount + s_iconCount) {
 			// Desktop icon entry (from Icons.ini via VGames)
@@ -3269,7 +3312,7 @@ END_NODE_FUN()
 
 // ============================================================================
 // CMediaCollection - filesystem-backed library of movies + TV shows.
-// Scans configured roots, caches results to xboxfs/E/MediaDB.cache, exposes
+// Scans configured roots, caches results to Library/MediaDB.cache, exposes
 // a stateful query API to XAP (SetCurrentShow / GetSeasonName / etc.).
 // ============================================================================
 
@@ -3288,7 +3331,7 @@ END_NODE_FUN()
 // Library roots come from desktop.ini globals (loaded by sdl_main.cpp).
 // Empty by default; user configures via Settings -> Media Library tab.
 // The scan no-ops on empty paths -- no library shown until configured.
-static const char* kCachePath = "xboxfs/E/MediaDB.cache";
+static const char* kCachePath = "Library/MediaDB.cache";
 
 extern char g_moviesRoot[512];
 extern char g_tvRoot[512];

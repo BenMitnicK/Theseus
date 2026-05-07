@@ -1,5 +1,5 @@
 // tmdb.cpp: in-process TMDB v3 client. libcurl HTTPS GETs, slug-keyed
-// JSON cache at xboxfs/E/TMDB/. Targeted field extractor instead of a
+// JSON cache at Library/TMDB/. Targeted field extractor instead of a
 // full JSON parser -- TMDB shapes are stable and we want ~5 fields.
 
 #include "tmdb.h"
@@ -68,8 +68,8 @@ static inline int Mkdir(const char* path)
 
 static std::string CachePath(const char* prefix, const std::string& slug)
 {
-    std::string p = "xboxfs/E/TMDB/";
-    Mkdir("xboxfs/E");
+    std::string p = "Library/TMDB/";
+    Mkdir("Library");
     Mkdir(p.c_str());
     p += prefix;
     p += '_';

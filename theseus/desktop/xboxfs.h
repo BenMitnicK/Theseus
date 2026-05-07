@@ -1,11 +1,17 @@
 // xboxfs.h: desktop drive-letter to host-path translation. Maps
-// Xbox-style paths (Q:\Xips\default.xip) onto the local xboxfs/
-// staging directory (xboxfs/Q/Xips/default.xip).
+// Xbox-style paths onto three top-level runtime folders that live next
+// to the binary:
+//
+//   C:\UIX Configs\foo   -> Configs/foo
+//   C:\foo               -> Configs/foo (e.g. C:\version)
+//   Q:\foo               -> Data/foo
+//   E:\foo               -> Library/foo
+//   F:\, G:\, R:\, etc.  -> not found (only one library partition on desktop;
+//                           XAP scripts that iterate drives just see empty)
+//
+// Xbox build is unaffected: it uses real C:/Q:/E: drives via XTL.
 
 #pragma once
-//   C:\...               -> ./xboxfs/C/...
-//   E:\...               -> ./xboxfs/E/...
-//   MUSIC:\...           -> ./xboxfs/MUSIC/...
 
 #include <cstring>
 #include <cstdio>
@@ -18,31 +24,38 @@
 #include <sys/stat.h>
 #include "virtual_games.h"
 
-// Base directory for the virtual Xbox filesystem
-#ifndef XBOXFS_BASE
-#define XBOXFS_BASE "xboxfs"
-#endif
+#include "xboxfs_drive.h"  // XboxFS_DriveToPrefix shared helper
 
-// Case-insensitive path resolution (Xbox FATX is case-insensitive)
-// Walks each path component and matches against actual directory entries
+// Case-insensitive path resolution (Xbox FATX is case-insensitive).
+// Walks each path component and matches against actual directory entries.
+// Trailing wildcard components like "*.*" or "Track*.mp3" are not file
+// names and shouldn't be case-mapped; peel them off, resolve the directory
+// prefix, then re-attach the wildcard so callers like FindFirstFile keep
+// working on case-sensitive Linux filesystems.
 inline bool XboxFS_ResolveCaseInsensitive(char* resolvedPath, size_t maxLen) {
-    // Start from the first component; try the path as-is first.
     struct stat st;
     if (stat(resolvedPath, &st) == 0)
         return true;
 
-    // Walk path components and match case-insensitively
-    char working[512];
-    working[0] = '\0';
-
-    char* path = resolvedPath;
-    char* components[32];
-    int nComponents = 0;
-
-    // Split path into components
     char tempPath[512];
     strncpy(tempPath, resolvedPath, sizeof(tempPath) - 1);
     tempPath[sizeof(tempPath) - 1] = '\0';
+
+    // If the last component is a wildcard pattern, save it and resolve
+    // only the directory prefix.
+    char savedWildcard[64] = "";
+    char* lastSlash = strrchr(tempPath, '/');
+    if (lastSlash) {
+        const char* tail = lastSlash + 1;
+        if (strchr(tail, '*') || strchr(tail, '?')) {
+            strncpy(savedWildcard, tail, sizeof(savedWildcard) - 1);
+            savedWildcard[sizeof(savedWildcard) - 1] = '\0';
+            *lastSlash = '\0';
+        }
+    }
+
+    char* components[32];
+    int nComponents = 0;
 
     char* tok = strtok(tempPath, "/");
     while (tok && nComponents < 32) {
@@ -115,6 +128,15 @@ inline bool XboxFS_ResolveCaseInsensitive(char* resolvedPath, size_t maxLen) {
             return false;
     }
 
+    // Re-attach a trailing wildcard, if one was peeled off.
+    if (savedWildcard[0]) {
+        size_t rl = strlen(rebuilt);
+        if (rl + 1 + strlen(savedWildcard) < sizeof(rebuilt)) {
+            if (rl) { rebuilt[rl++] = '/'; rebuilt[rl] = '\0'; }
+            strncat(rebuilt, savedWildcard, sizeof(rebuilt) - rl - 1);
+        }
+    }
+
     strncpy(resolvedPath, rebuilt, maxLen - 1);
     resolvedPath[maxLen - 1] = '\0';
     return true;
@@ -130,41 +152,127 @@ inline const char* XboxFS_TranslatePath(const char* xboxPath) {
         return s_buf;
     }
 
-    // Look for drive letter pattern: "X:\" or "X:/"  or "WORD:\"
+    // Device-path form: "\Device\Harddisk0\PartitionN\..." Used by the
+    // XAP `launch()` builtin to address Xbox HDD partitions. Map the
+    // partition number back to a drive letter so the rest of this
+    // function's drive-letter logic handles it. Only Partition1 (E)
+    // and Partition2 (C) actually exist on desktop; everything else
+    // (6/7/8/9 = F/G/R/S) is dead-letter.
+    {
+        static const char kDevPrefix[] = "\\Device\\Harddisk0\\Partition";
+        const size_t kDevPrefixLen = sizeof(kDevPrefix) - 1;
+        if (strncmp(xboxPath, kDevPrefix, kDevPrefixLen) == 0) {
+            const char* p = xboxPath + kDevPrefixLen;
+            int partNum = 0;
+            while (*p >= '0' && *p <= '9') { partNum = partNum * 10 + (*p - '0'); p++; }
+            if (*p == '\\' || *p == '/') p++;
+            char drive = 0;
+            switch (partNum) {
+                case 1: drive = 'E'; break;
+                case 2: drive = 'C'; break;
+                case 6: drive = 'F'; break;
+                case 7: drive = 'G'; break;
+                case 8: drive = 'R'; break;
+                case 9: drive = 'S'; break;
+                default: drive = 0; break;
+            }
+            const char* prefix = drive ? XboxFS_DriveToPrefix(drive) : 0;
+            if (!prefix) {
+                s_buf[0] = '\0';
+                return s_buf;
+            }
+            snprintf(s_buf, sizeof(s_buf), "%s/%s", prefix, p);
+            for (char* q = s_buf; *q; q++) if (*q == '\\') *q = '/';
+            XboxFS_ResolveCaseInsensitive(s_buf, sizeof(s_buf));
+            return s_buf;
+        }
+    }
+
+    // Look for drive letter pattern: "X:\" or "X:/" or "WORD:\".
     const char* colon = strchr(xboxPath, ':');
     if (colon && (colon[1] == '\\' || colon[1] == '/')) {
-        // Extract drive name (everything before the colon)
         int driveLen = (int)(colon - xboxPath);
         if (driveLen > 0 && driveLen < 32) {
             char drive[32];
             memcpy(drive, xboxPath, driveLen);
             drive[driveLen] = '\0';
 
-            // Build translated path: xboxfs/DRIVE/rest...
-            const char* rest = colon + 2; // skip ":\" or ":/"
-            snprintf(s_buf, sizeof(s_buf), "%s/%s/%s", XBOXFS_BASE, drive, rest);
+            // Skip ":\" or ":/" then route the rest of the path based on
+            // which Xbox drive this is.
+            const char* rest = colon + 2;
+            const char* prefix = NULL;
 
-            // Convert backslashes to forward slashes
+            if (driveLen == 1) {
+                if (drive[0] == 'C' || drive[0] == 'c') {
+                    // Strip "UIX Configs/" if present so the on-disk Configs/
+                    // is a flat dir without the UIX-Lite legacy folder name.
+                    static const char kUix[] = "UIX Configs";
+                    size_t uixLen = sizeof(kUix) - 1;
+                    if (strncmp(rest, kUix, uixLen) == 0 &&
+                        (rest[uixLen] == '\\' || rest[uixLen] == '/')) {
+                        rest += uixLen + 1;
+                    }
+                    prefix = "Configs";
+                } else {
+                    prefix = XboxFS_DriveToPrefix(drive[0]);
+                }
+            } else if (strcasecmp(drive, "MUSIC") == 0) {
+                // Legacy MUSIC: virtual drive. The dashboard mounts the
+                // user's music collection here; we point it at the bundled
+                // Library/Music fallback (the desktop's [Library] MusicRoot
+                // setting in desktop.ini is consumed separately by
+                // CMediaCollection / DashMusic_Scan).
+                prefix = "Library/Music";
+            }
+
+            if (!prefix) {
+                // F:, G:, H:, I:, R:, etc. -- no analog on desktop. Return
+                // an empty string so the caller's stat()/opendir()/fopen()/
+                // mkdir() all fail predictably. Critically, do NOT fall
+                // through to the "pass through unchanged" branch -- that
+                // would hand callers like Preloader_Mkdirp a literal
+                // "F:/Foo/Bar" path, and mkdir would happily create a
+                // directory named "F:" (which Finder helpfully renders as
+                // "F/", confusing everyone).
+                s_buf[0] = '\0';
+                return s_buf;
+            }
+
+            snprintf(s_buf, sizeof(s_buf), "%s/%s", prefix, rest);
+
+            // Convert backslashes to forward slashes.
             for (char* p = s_buf; *p; p++) {
                 if (*p == '\\') *p = '/';
             }
 
-            // Case-insensitive resolve (Xbox FATX doesn't care about case)
+            // Legacy aliases. Xbox shipped engine-level settings in
+            // Q:\System\config.ini (XBE config -- resolution, current skin)
+            // and a separate XAP-level config in C:\UIX Configs\config.ini
+            // (scene wiring). On desktop the engine-level settings are
+            // collapsed into Configs/desktop.ini alongside CRT, library
+            // roots, etc., so XAP code that calls
+            // CSettingsFile::Open("Q:\\System\\Config.ini") reads + writes
+            // through the same source-of-truth file.
+            if (strcasecmp(s_buf, "Data/System/config.ini") == 0) {
+                strncpy(s_buf, "Configs/desktop.ini", sizeof(s_buf) - 1);
+                s_buf[sizeof(s_buf) - 1] = '\0';
+            }
+
+            // Case-insensitive resolve (Xbox FATX doesn't care about case).
             XboxFS_ResolveCaseInsensitive(s_buf, sizeof(s_buf));
 
-            // Virtual game icon redirect: if the translated file doesn't exist
-            // and it looks like a game icon path, check the virtual games DB
+            // Virtual-game icon redirect: if the translated file doesn't
+            // exist and it looks like a game icon path, fall through to
+            // the virtual games DB.
             {
                 struct stat _vst;
                 if (stat(s_buf, &_vst) != 0) {
-                    // Check if this is an icon.jpg request for a virtual game
                     const char* iconTail = strstr(s_buf, "/icon.jpg");
                     if (!iconTail) iconTail = strstr(s_buf, "/icon.png");
                     if (iconTail) {
-                        // Extract folder name: xboxfs/{drive}/{cat}/{name}/icon.jpg
                         char tmpBuf[512];
                         strncpy(tmpBuf, s_buf, sizeof(tmpBuf) - 1);
-                        tmpBuf[iconTail - s_buf] = 0; // cut at /icon.jpg
+                        tmpBuf[iconTail - s_buf] = 0;
                         extern int VGames_MatchFolder(const char*);
                         int vgIdx = VGames_MatchFolder(tmpBuf);
                         if (vgIdx >= 0) {
@@ -179,6 +287,8 @@ inline const char* XboxFS_TranslatePath(const char* xboxPath) {
                 }
             }
             return s_buf;
+
+            no_drive: ;
         }
     }
 

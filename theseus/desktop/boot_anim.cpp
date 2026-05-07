@@ -4,7 +4,7 @@
 // context is torn down completely so the dashboard's own libmpv instance
 // (CDVDPlayer / CMediaPlayer) can initialize cleanly afterward.
 //
-// The bundled video (xboxfs/C/UIX Configs/xbox_boot.mp4) is a 1080p60
+// The bundled video (Configs/xbox_boot.mp4) is a 1080p60
 // capture of the original Xbox 2001 boot animation. Source:
 //   https://www.youtube.com/watch?v=oADANrDGhoQ
 // Original boot animation (c) Microsoft / Pipeworks Software 2001.

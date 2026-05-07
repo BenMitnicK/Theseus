@@ -297,9 +297,18 @@ char g_musicRoot[512]  = "";
 char g_moviesRoot[512] = "";
 char g_tvRoot[512]     = "";
 char g_tmdbKey[128]    = "";  // TMDB v3 API key, optional
+char g_romsDir[512]    = "";  // Default ROMs/ISOs root, expanded as $ROMS_DIR in launch templates
 int g_startupMode = 0;      // 0 = ask, 1 = dashboard, 2 = development
 bool g_bUseOnScreenKeyboard = false;  // when true, ignore physical keyboard during keyboard popups
 bool g_bShowBootAnimation   = true;   // play xbox_boot.mp4 once at startup before the dashboard
+
+// Legacy [Progressive] / [Dashboard Settings] sections. Historically lived
+// in Q:\System\config.ini on Xbox; collapsed into desktop.ini on desktop
+// via xboxfs.h's path alias. Tracked here so SaveDesktopSettings can
+// round-trip them (we truncate-rewrite desktop.ini on every save).
+char g_use720p[8]        = "Yes";
+char g_useProgressive[8] = "Yes";
+char g_currentSkin[64]   = "Stock";
 
 class CKeyboard;
 extern CKeyboard* g_pActiveKeyboard;
@@ -307,7 +316,7 @@ extern void Keyboard_InsertText(CKeyboard* pKb, const char* sz);
 extern void Keyboard_HandleKey(CKeyboard* pKb, int sdlKey);
 
 void LoadDesktopSettings() {
-    FILE* fp = fopen("xboxfs/C/UIX Configs/desktop.ini", "r");
+    FILE* fp = fopen("Configs/desktop.ini", "r");
     if (!fp) return;
     char line[1024];
     while (fgets(line, sizeof(line), fp)) {
@@ -341,6 +350,18 @@ void LoadDesktopSettings() {
             g_bUseOnScreenKeyboard = atoi(line + 20) != 0;
         else if (strncmp(line, "ShowBootAnimation=", 18) == 0)
             g_bShowBootAnimation = atoi(line + 18) != 0;
+        else if (strncmp(line, "Use 720p=", 9) == 0) {
+            strncpy(g_use720p, line + 9, sizeof(g_use720p) - 1);
+            g_use720p[sizeof(g_use720p) - 1] = 0;
+        }
+        else if (strncmp(line, "Use Progressive=", 16) == 0) {
+            strncpy(g_useProgressive, line + 16, sizeof(g_useProgressive) - 1);
+            g_useProgressive[sizeof(g_useProgressive) - 1] = 0;
+        }
+        else if (strncmp(line, "Current Skin=", 13) == 0) {
+            strncpy(g_currentSkin, line + 13, sizeof(g_currentSkin) - 1);
+            g_currentSkin[sizeof(g_currentSkin) - 1] = 0;
+        }
         else if (strncmp(line, "StartupMode=", 12) == 0) {
             if (strncmp(line + 12, "dashboard", 9) == 0) g_startupMode = 1;
             else if (strncmp(line + 12, "development", 11) == 0) g_startupMode = 2;
@@ -354,6 +375,34 @@ void LoadDesktopSettings() {
             strncpy(g_tvRoot, line + 7, sizeof(g_tvRoot) - 1);
         else if (strncmp(line, "TMDBKey=", 8) == 0)
             strncpy(g_tmdbKey, line + 8, sizeof(g_tmdbKey) - 1);
+        else if (strncmp(line, "RomsDir=", 8) == 0)
+            strncpy(g_romsDir, line + 8, sizeof(g_romsDir) - 1);
+    }
+    fclose(fp);
+}
+
+// Re-read just the legacy [Progressive] / [Dashboard Settings] keys from
+// disk so SaveDesktopSettings doesn't clobber values the XAP / CSettingsFile
+// wrote between Load and Save (e.g. user changed skin via the dashboard UI,
+// then toggled CRT through Settings -- without this, the save would overwrite
+// the new skin name).
+static void RereadLegacyFromDisk() {
+    FILE* fp = fopen("Configs/desktop.ini", "r");
+    if (!fp) return;
+    char line[1024];
+    while (fgets(line, sizeof(line), fp)) {
+        char* nl = strchr(line, '\n'); if (nl) *nl = 0;
+        char* cr = strchr(line, '\r'); if (cr) *cr = 0;
+        if (strncmp(line, "Use 720p=", 9) == 0) {
+            strncpy(g_use720p, line + 9, sizeof(g_use720p) - 1);
+            g_use720p[sizeof(g_use720p) - 1] = 0;
+        } else if (strncmp(line, "Use Progressive=", 16) == 0) {
+            strncpy(g_useProgressive, line + 16, sizeof(g_useProgressive) - 1);
+            g_useProgressive[sizeof(g_useProgressive) - 1] = 0;
+        } else if (strncmp(line, "Current Skin=", 13) == 0) {
+            strncpy(g_currentSkin, line + 13, sizeof(g_currentSkin) - 1);
+            g_currentSkin[sizeof(g_currentSkin) - 1] = 0;
+        }
     }
     fclose(fp);
 }
@@ -361,10 +410,11 @@ void LoadDesktopSettings() {
 void SaveDesktopSettings() {
     // Ensure directory exists
     struct stat st;
-    if (stat("xboxfs/C/UIX Configs", &st) != 0) {
-        system("mkdir -p \"xboxfs/C/UIX Configs\"");
+    if (stat("Configs", &st) != 0) {
+        system("mkdir -p \"Configs\"");
     }
-    FILE* fp = fopen("xboxfs/C/UIX Configs/desktop.ini", "w");
+    RereadLegacyFromDisk();
+    FILE* fp = fopen("Configs/desktop.ini", "w");
     if (!fp) return;
     fprintf(fp, "[Desktop]\n");
     fprintf(fp, "XemuPath=%s\n", s_xemuPath);
@@ -388,6 +438,13 @@ void SaveDesktopSettings() {
     fprintf(fp, "MoviesRoot=%s\n", g_moviesRoot);
     fprintf(fp, "TvRoot=%s\n", g_tvRoot);
     fprintf(fp, "TMDBKey=%s\n", g_tmdbKey);
+    fprintf(fp, "RomsDir=%s\n", g_romsDir);
+    // Legacy Q:\System\config.ini sections (aliased to this file by xboxfs.h).
+    fprintf(fp, "\n[Progressive]\n");
+    fprintf(fp, "Use 720p=%s\n",        g_use720p);
+    fprintf(fp, "Use Progressive=%s\n", g_useProgressive);
+    fprintf(fp, "\n[Dashboard Settings]\n");
+    fprintf(fp, "Current Skin=%s\n",    g_currentSkin);
     fclose(fp);
 }
 
@@ -945,7 +1002,7 @@ int main(int argc, char* argv[]) {
     // isn't the focus there) and toggleable via Settings > Show Boot Animation.
     if (g_bShowBootAnimation && !g_extractedMode) {
         BootAnim_PlayAndWait(g_pSDLWindow,
-            "xboxfs/C/UIX Configs/xbox_boot.mp4");
+            "Configs/xbox_boot.mp4");
     }
 
     // Initialize app globals
@@ -967,6 +1024,25 @@ int main(int argc, char* argv[]) {
 
     fprintf(stdout, "InitApp() succeeded - entering main loop\n");
 
+    // Register pluggable launcher modules (shell, url, future:
+    // xemu, retroarch, steam, ...). Done before the dispatcher
+    // is exercised so any subsequent DesktopLaunch* call goes
+    // through the registry.
+    {
+        extern void Launchers_RegisterAll();
+        Launchers_RegisterAll();
+    }
+
+    // Synthesize Library/UDATA/<TitleID>/TitleMeta.xbx for every Title
+    // Maker entry so the dashboard's Memory section renders title pods
+    // for them. Any user-supplied TitleMeta.xbx files (real Xbox saves
+    // copied in) are left alone -- we only fill gaps. Skipped on Xbox
+    // build via the desktop-only call site here.
+    {
+        extern int UDataSynth_RebuildAll();
+        UDataSynth_RebuildAll();
+    }
+
     // Register pre-swap overlay callback for mute toast
     IDirect3DDevice8::s_preSwapCB = PreSwapOverlays;
 
@@ -979,7 +1055,7 @@ int main(int argc, char* argv[]) {
     // In development mode: open editor and load extracted XAPs
     if (g_extractedMode) {
         g_xapEditorOpen = true;
-        XapEditor_LoadFile("xboxfs/Q/Xips/default/default.xap");
+        XapEditor_LoadFile("Data/Xips/default/default.xap");
         if (XapEditor_HasBuffer())
             ReloadSceneFromEditor();
     }
@@ -1104,7 +1180,7 @@ int main(int argc, char* argv[]) {
                     if (event.key.keysym.sym == SDLK_F2) {
                         g_xapEditorOpen = !g_xapEditorOpen;
                         if (g_xapEditorOpen && !XapEditor_HasBuffer())
-                            XapEditor_LoadFile("xboxfs/Q/Xips/default/default.xap");
+                            XapEditor_LoadFile("Data/Xips/default/default.xap");
                     }
                     if (event.key.keysym.sym == SDLK_F3) {
                         g_titleMakerOpen = !g_titleMakerOpen;

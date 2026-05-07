@@ -33,6 +33,8 @@
 #include <direct.h>
 #include <process.h>
 #include <dbghelp.h>
+#include <avrt.h>
+#include <dwmapi.h>
 #pragma comment(lib, "dbghelp.lib")
 
 // Watchdog: dumps main thread stack to hang_dump.txt after 10s of detected hang
@@ -711,6 +713,27 @@ int main(int argc, char* argv[]) {
         freopen("CONOUT$", "w", stderr);
         freopen("CONIN$", "r", stdin);
     }
+
+    //Milenko-Testing: I don't run windows, i googled this. don't know if it will work as intended.
+    SetPriorityClass(GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS);
+    DwmEnableMMCSS(TRUE);
+    {
+        DWORD taskIdx = 0;
+        AvSetMmThreadCharacteristicsW(L"Games", &taskIdx);
+    }
+    typedef BOOL (WINAPI *SetProcessInfoFn)(HANDLE, PROCESS_INFORMATION_CLASS, LPVOID, DWORD);
+    HMODULE hKernel = GetModuleHandleA("kernel32.dll");
+    if (hKernel) {
+        SetProcessInfoFn pSetProcessInformation =
+            (SetProcessInfoFn)GetProcAddress(hKernel, "SetProcessInformation");
+        if (pSetProcessInformation) {
+            PROCESS_POWER_THROTTLING_STATE pt = {0};
+            pt.Version = PROCESS_POWER_THROTTLING_CURRENT_VERSION;
+            pt.ControlMask = PROCESS_POWER_THROTTLING_EXECUTION_SPEED;
+            pt.StateMask = 0; // 0 == opt out of throttling
+            pSetProcessInformation(GetCurrentProcess(), ProcessPowerThrottling, &pt, sizeof(pt));
+        }
+    }
 #endif
 
     // Change working directory to the executable's directory so that
@@ -835,8 +858,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Enable vsync
-    SDL_GL_SetSwapInterval(1);
+    // Adaptive vsync; fall back to hard vsync if unsupported.
+    if (SDL_GL_SetSwapInterval(-1) != 0)
+        SDL_GL_SetSwapInterval(1);
 
     fprintf(stdout, "UIX Desktop - SDL/OpenGL Preview Tool\n");
     fprintf(stdout, "OpenGL: %s\n", glGetString(GL_VERSION));
@@ -1370,7 +1394,8 @@ int main(int argc, char* argv[]) {
                 g_pGLContext = SDL_GL_CreateContext(g_pSDLWindow);
                 g_msaaSamples = 0;
             }
-            SDL_GL_SetSwapInterval(1);
+            if (SDL_GL_SetSwapInterval(-1) != 0)
+                SDL_GL_SetSwapInterval(1);
 
             // Enable/disable MSAA
             if (g_msaaSamples > 0) glEnable(GL_MULTISAMPLE);

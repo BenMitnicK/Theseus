@@ -1278,6 +1278,21 @@ int main(int argc, char* argv[]) {
                         if (k == SDLK_SPACE) { MediaPlayer_TogglePause(); break; }
                         if (k == SDLK_LEFT)  { MediaPlayer_SeekRelative(-5.0); break; }
                         if (k == SDLK_RIGHT) { MediaPlayer_SeekRelative( 5.0); break; }
+                        if (k == SDLK_t) {
+                            extern void MediaUI_ToggleTrackMenu();
+                            MediaUI_ToggleTrackMenu();
+                            break;
+                        }
+                        if (k == SDLK_LEFTBRACKET) {
+                            extern void MediaUI_PlaylistPrev();
+                            MediaUI_PlaylistPrev();
+                            break;
+                        }
+                        if (k == SDLK_RIGHTBRACKET) {
+                            extern void MediaUI_PlaylistNext();
+                            MediaUI_PlaylistNext();
+                            break;
+                        }
                     }
                     if (event.key.keysym.sym == SDLK_ESCAPE && g_debugMode && g_pD3DDev) {
                         g_pD3DDev->m_inspectorSelectedNode = NULL;

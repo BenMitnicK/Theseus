@@ -557,6 +557,10 @@ static void PreSwapOverlays() {
     // Title Maker floating window
     RenderTitleMaker();
 
+    // Playlist Maker floating window (F6)
+    extern void RenderPlaylistMaker();
+    RenderPlaylistMaker();
+
     // Selection highlight overlay (pulsing AABB + hover tooltip)
     if (needHighlight)
         DrawSelectionHighlight(g_pD3DDev);
@@ -1313,6 +1317,10 @@ int main(int argc, char* argv[]) {
                     }
                     if (event.key.keysym.sym == SDLK_F5) {
                         g_hddBrowserOpen = !g_hddBrowserOpen;
+                    }
+                    if (event.key.keysym.sym == SDLK_F6) {
+                        extern void TogglePlaylistMaker();
+                        TogglePlaylistMaker();
                     }
                     if (event.key.keysym.sym == SDLK_F10) {
                         g_showMenuBar = !g_showMenuBar;

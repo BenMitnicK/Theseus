@@ -144,6 +144,8 @@ struct TM_RAImportCtx {
     char installRoot[512];
 };
 
+static void TM_RegisterIcon(const char* name, const char* titleID);
+
 static void TM_RAImportItem(const char* label, const char* path,
                             const char* dbName, const char* coreName,
                             const char* corePath, void* ud) {
@@ -237,6 +239,7 @@ static void TM_RAImportItem(const char* label, const char* path,
                     TM_CopyFile(boxart, iconPng);
                 }
             }
+            TM_RegisterIcon(g_vgames.games[i].name, titleID);
             ctx->skipped++;
             return;
         }
@@ -254,6 +257,7 @@ static void TM_RAImportItem(const char* label, const char* path,
     snprintf(genID, sizeof(genID), "%08x", (unsigned)time(NULL) + (unsigned)ctx->added);
 
     VGames_Add(cleanName, genID, launch, "E", "Emulators");
+    TM_RegisterIcon(cleanName, genID);
 
     char boxart[1024];
     if (RetroArch_FindBoxart(ctx->installRoot, dbName, label, path,
@@ -299,6 +303,31 @@ static void TM_WriteIconsIni(char keys[][128], char vals[][128], int count) {
     for (int i = 0; i < count; i++)
         fprintf(fp, "%s=%s\n", keys[i], vals[i]);
     fclose(fp);
+}
+
+// Read Icons.ini, upsert one name -> titleID mapping, write back.
+// harddrive.xap reads this to route a tile's display name back to the
+// right icon file under Configs/icons/.
+static void TM_RegisterIcon(const char* name, const char* titleID) {
+    if (!name || !*name || !titleID || !*titleID) return;
+    static char keys[TM_MAX_ICONS][128];
+    static char vals[TM_MAX_ICONS][128];
+    int count = TM_ReadIconsIni(keys, vals);
+    bool found = false;
+    for (int i = 0; i < count; i++) {
+        if (strcasecmp(keys[i], name) == 0) {
+            strncpy(vals[i], titleID, 127);
+            vals[i][127] = 0;
+            found = true;
+            break;
+        }
+    }
+    if (!found && count < TM_MAX_ICONS) {
+        strncpy(keys[count], name, 127); keys[count][127] = 0;
+        strncpy(vals[count], titleID, 127); vals[count][127] = 0;
+        count++;
+    }
+    TM_WriteIconsIni(keys, vals, count);
 }
 
 // ============================================================================
@@ -1401,6 +1430,7 @@ void RenderTitleMaker() {
                 s_statusTime = 4.0f;
             } else {
                 VGames_Add(cleanName, genID, launch, "E", "Emulators");
+                TM_RegisterIcon(cleanName, genID);
 
                 char system[256];
                 if (RetroArch_GetSystemForCore(s_retroarchPath,

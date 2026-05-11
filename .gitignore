@@ -51,3 +51,10 @@ build/Makefile.thinkpad
 # Backup files
 *.bak
 MediaDB.cache
+
+# xiptool extract scratch dirs. Source-of-truth for xap files lives in
+# xips-source/; Data/Xips/<name>/ only exists as a pack staging area
+# (xiptool names .xip after its input folder) or as leftover from
+# `xiptool extract`.
+Data/Xips/default/
+Data/Xips/default-xbox/

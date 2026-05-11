@@ -1,6 +1,13 @@
 var bLauncherVisible0;
 var bInRecentTitles;
 var bRecentToggled;
+// Explicit "we drilled into a category's title list" flag. Mirrors the
+// bInCategoryView pattern MediaPlayer.xap uses. The old code only had
+// bLauncherVisible0 + bInBrowser + bRecentToggled and inferred the title
+// list state by elimination, which made the back-button path brittle:
+// if bLauncherVisible0 stuck true the back went to main menu instead of
+// the category list. With this flag the OnBDown branches are explicit.
+var bInTitleList;
 var nPlayCursor0;
 var nPlayCursor1;
 var nPreviousPlayCursor0;
@@ -31,6 +38,7 @@ function initialize()
 	bLauncherVisible0 = true;
 	bInRecentTitles = false;
 	bRecentToggled = false;
+	bInTitleList = false;
 	nCurLauncherItem0 = 0;
 	nCurLauncherScroll0 = 0;
 	nPlayCursor0 = 0;
@@ -118,24 +126,43 @@ function UpdateTrackList()
 			{
 				c.TrackNames.children[i].SetScale(0.12, 0.12, 0.12);
 				c.TrackNames.children[i].children[0].appearance.name = "GameHilite";
+				// Reset the orb every cursor move. Previous "SelectedIcon"
+				// material + texture from the last row would otherwise leak
+				// through whenever the current row's icon lookup didn't
+				// land on a match.
 				c.theIcons.children[0].children[0].appearance.material.name = "MainMenuOrb";
-				var Icon = IconFile.GetValue(strCacheItem[0]).toLowerCase();
-				if(Icon == "Unknown" | Icon == "" | (bInBrowser & (bRecentToggled == false))) 
+				c.theIcons.children[0].children[0].appearance.texture.url = DefaultIcon;
+				if(bInTitleList & (bRecentToggled == false))
 				{
-					c.theIcons.children[0].children[0].appearance.texture.url = DefaultIcon; 
-				}
-				else
-				{
-					for(var x = 0; x < TitleCount; x = x + 1)
+					// VGames-backed list: ask theGamesCollection for the icon
+					// URL directly. The returned path (E:\<cat>\<name>\icon.jpg)
+					// goes through xboxfs's redirect to Configs/icons/<titleID>.{jpg,png}
+					// so any VGames entry with a registered icon shows up.
+					var iconUrl = theGamesCollection.GetIcon(n);
+					if(iconUrl != "")
 					{
-						if(c.theIconSelector.GetTitleID(x).toLowerCase() == Icon) 
+						c.theIcons.children[0].children[0].appearance.texture.url = iconUrl;
+					}
+				}
+				else if(bInBrowser == false | bRecentToggled)
+				{
+					// Recent-titles overlay (or any non-browser mode that
+					// still uses the cache+iconselector path). Keep the
+					// original Icons.ini -> theIconSelector lookup so the
+					// recent list still gets its orb art.
+					var Icon = IconFile.GetValue(strCacheItem[0]).toLowerCase();
+					if(Icon != "Unknown" & Icon != "")
+					{
+						for(var x = 0; x < TitleCount; x = x + 1)
 						{
-							c.theIcons.children[0].children[0].appearance.material.name = "SelectedIcon";
-							c.theIconSelector.curTitle = x;
-							c.theIconSelector.setSelImage();
-							break;
+							if(c.theIconSelector.GetTitleID(x).toLowerCase() == Icon)
+							{
+								c.theIcons.children[0].children[0].appearance.material.name = "SelectedIcon";
+								c.theIconSelector.curTitle = x;
+								c.theIconSelector.setSelImage();
+								break;
+							}
 						}
-
 					}
 				}
 			}
@@ -223,6 +250,7 @@ function ShowLauncherMenu()
 	bInRecentTitles = false;
 	bRecentToggled = false;
 	bInBrowser = false;
+	bInTitleList = false;
 	c.theIcons.children[0].children[0].appearance.material.name = "MainMenuOrb";
 	if(c.theIcons.visible) c.theIcons.children[0].children[0].appearance.texture.url = DefaultIcon;
 }
@@ -248,6 +276,7 @@ function StartTitleList()
 	theTitleListViewpoint.isBound = true;
 	CurrentViewpoint = theTitleListViewpoint;
 	bLauncherVisible0 = false;
+	bInTitleList = true;
 }
 
 function EnterLauncherMenu()
@@ -468,19 +497,23 @@ function RefreshTitleList()
 
 function GetTitleList(mnuName)
 {
-	CacheFile.section = "Cache";
+	// Desktop: read straight from VGames via theGamesCollection. Old Xbox
+	// code paged through cache.ini in batches of 25, capped by buffer size
+	// and required Y-to-refresh. The node auto-refreshes off VGames'
+	// generation counter, so this is always live.
+	theGamesCollection.SetCategory(mnuName);
 	var TitleList = new Array;
-	var TempList = new Array;
-	var i = 1;
-	TempList = Split(CacheFile.GetValue(mnuName),"|");
-	while(TempList.length == 25)
+	var n = theGamesCollection.GetCount();
+	for(var i = 0; i < n; i = i + 1)
 	{
-		TitleList = TitleList.concat(TempList);
-		TempList = Split(CacheFile.GetValue(mnuName + "-" + i),"|");
-		i = i + 1;
+		// Format matches what cache.ini used to emit so LaunchItem keeps
+		// working unchanged: "FolderName;driveIdx;pathIdx". VGames lives
+		// on drive E (index 1 in DriveLocations C/E/F/...) and the title's
+		// relative subdir is always the first split of CurFillDir (Xbox
+		// scanned multiple alt-named dirs; desktop just has one canonical).
+		TitleList[i] = theGamesCollection.GetTitle(i) + ";1;0";
 	}
-	TitleList = TitleList.concat(TempList);
-	return TitleList.sort();
+	return TitleList;
 }
 
 DEF theLauncher Level
@@ -756,34 +789,23 @@ DEF theLauncher Level
 		{
 			theLauncher.children[0].children[0].MU_back_pod_HL.children[0].appearance.material.param = 1;
 			PlaySoundB();
-			if(bInBrowser & bInRoot == false)
+
+			// Quicklaunch-B assignment shortcut. Only in file browser, only when
+			// both triggers held on an .xbe row. Bails before any nav.
+			if(bInBrowser & bInRoot == false & LeftTrigger & RightTrigger)
 			{
-				if(LeftTrigger & RightTrigger)
+				if(sFileType[nPlayCursor0] == "xbe")
 				{
-					if(sFileType[nPlayCursor0] == "xbe")
-					{
-						var sPath = arrMenuPaths[nCurLauncherItem0] + "\\" + TempTitleList[nPlayCursor0];
-						SetSavedValue("QuickLaunch","QuickLaunchB",sPath);
-						TellUser(Translate("ASSIGNED_QUICKLAUNCH") + "B","");
-						return;
-					}
-				} 
-			}
-			if (bLauncherVisible0)
-			{
-				if(bBackToSettings)
-				{
-					bBackToSettings = false;
-					theSettingsSubMenuOut.Play();
-					GoToSettings();
-				}
-				else
-				{
-					theGamesMenuOut.Play();
-					theMainMenu.GoBackTo();
+					var sPath = arrMenuPaths[nCurLauncherItem0] + "\\" + TempTitleList[nPlayCursor0];
+					SetSavedValue("QuickLaunch","QuickLaunchB",sPath);
+					TellUser(Translate("ASSIGNED_QUICKLAUNCH") + "B","");
+					return;
 				}
 			}
-			else if(bRecentToggled)
+
+			// Recent-titles overlay: pop the overlay and restore whatever view
+			// was underneath (title list or file browser).
+			if (bRecentToggled)
 			{
 				if(bInBrowser)
 				{
@@ -807,12 +829,31 @@ DEF theLauncher Level
 				bInRecentTitles = false;
 				bRecentToggled = false;
 				UpdateTrackList();
+				return;
 			}
-			else
+
+			// Drilled into a title list or file browser: back to launcher menu
+			// (category tile selection). Checked before bLauncherVisible0 so a
+			// stale-true value can't punt us all the way out to main menu.
+			if (bInTitleList | bInBrowser)
 			{
 				CurrentViewpoint = LauncherViewpoint;
 				ShowLauncherMenu();
 				thePlayerPanelOut.Play();
+				return;
+			}
+
+			// At the launcher menu (category list). B exits the scene.
+			if(bBackToSettings)
+			{
+				bBackToSettings = false;
+				theSettingsSubMenuOut.Play();
+				GoToSettings();
+			}
+			else
+			{
+				theGamesMenuOut.Play();
+				theMainMenu.GoBackTo();
 			}
 		}
 		function OnRightDown() { RightTrigger = true; if(bInBrowser == false) OnMoveRight(); }
@@ -1094,4 +1135,21 @@ function PathEllipsis(x,MaxCharacters)
 		c = sPath.length();
 	}
 	return a.join("\\") + "\\...\\" + b.join("\\");
+}
+
+
+////////////////////////////////////////////////////////////////////////////
+// Desktop title list, backed by CGamesCollection in desktop_nodes.cpp.
+// Replaces the cache.ini 25-per-segment paging the Xbox harddrive scene
+// used; this just reads VGames straight from RAM. Auto-refreshes when
+// Title Maker mutates games.ini -- no Y-to-refresh dance needed.
+//
+// Placed at end of file so it doesn't shift scene-tree indexing of the
+// viewpoints and theLauncher Level above (same idiom MediaPlayer.xap uses
+// for theMediaCollection / thePlaylistCollection).
+////////////////////////////////////////////////////////////////////////////
+
+
+DEF theGamesCollection GamesCollection
+{
 }

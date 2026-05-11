@@ -27,6 +27,10 @@ struct VirtualGameDB {
     VirtualGame games[VGAMES_MAX];
     int count;
     bool loaded;
+    // Bumps on every mutation. Consumers (eg CGamesCollection) cache filtered
+    // slices keyed on this so they auto-refresh when games.ini changes without
+    // anyone having to call Refresh().
+    unsigned int generation;
 };
 
 // Global database
@@ -88,7 +92,9 @@ inline void VGames_Load() {
             strncpy(cur->category, val, sizeof(cur->category) - 1);
     }
     fclose(fp);
-    fprintf(stdout, "[VGames] Loaded %d virtual games from games.ini\n", g_vgames.count);
+    g_vgames.generation++;
+    fprintf(stdout, "[VGames] Loaded %d virtual games from games.ini (gen %u)\n",
+            g_vgames.count, g_vgames.generation);
 }
 
 // Reload (force re-read of games.ini)
@@ -136,6 +142,7 @@ inline int VGames_Add(const char* name, const char* titleID, const char* launch,
     strncpy(g.drive, drive ? drive : "E", sizeof(g.drive) - 1);
     strncpy(g.category, category ? category : "Games", sizeof(g.category) - 1);
     g.valid = true;
+    g_vgames.generation++;
     return g_vgames.count++;
 }
 
@@ -149,6 +156,7 @@ inline void VGames_Update(int idx, const char* name, const char* titleID,
     if (launch)   strncpy(g.launch, launch, sizeof(g.launch) - 1);
     if (drive && drive[0])    strncpy(g.drive, drive, sizeof(g.drive) - 1);
     if (category && category[0]) strncpy(g.category, category, sizeof(g.category) - 1);
+    g_vgames.generation++;
 }
 
 // Find a game by name (returns index, or -1)
@@ -174,6 +182,7 @@ inline void VGames_DeleteByName(const char* name) {
 
     // Mark as invalid
     g_vgames.games[idx].valid = false;
+    g_vgames.generation++;
 
     // Rewrite games.ini without this entry
     FILE* fp = fopen("Configs/games.ini", "w");

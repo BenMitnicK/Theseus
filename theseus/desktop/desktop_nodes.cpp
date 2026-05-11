@@ -4612,6 +4612,165 @@ END_NODE_FUN()
 
 
 // ============================================================================
+// CGamesCollection - XAP-callable view over the VGames database (games.ini),
+// filtered by category. Pairs with the desktop harddrive scene to replace
+// the Xbox-era cache.ini batched paging (which capped at 25 per segment and
+// truncated when buffers overflowed). Auto-refreshes by tracking VGames'
+// generation counter, so adds/edits from Title Maker show up immediately
+// without anyone calling Refresh().
+// ============================================================================
+
+#include <algorithm>
+#include "virtual_games.h"
+
+extern void DesktopLaunchTitle(const char* devicePath);
+
+class CGamesCollection : public CNode
+{
+public:
+	CGamesCollection() : m_gen(0)
+	{
+		m_category[0] = 0;
+	}
+
+	DECLARE_NODE(CGamesCollection, CNode)
+	DECLARE_NODE_PROPS()
+	DECLARE_NODE_FUNCTIONS()
+
+	// Current filter
+	char m_category[32];
+	// Indices into g_vgames.games, sorted alphabetically by name
+	std::vector<int> m_slice;
+	// Last seen generation. Re-filter when it changes.
+	unsigned int m_gen;
+
+	void EnsureFresh()
+	{
+		VGames_Load();
+		if (m_gen == g_vgames.generation && !m_slice.empty()) return;
+		Rebuild();
+	}
+
+	void Rebuild()
+	{
+		m_slice.clear();
+		if (!m_category[0]) {
+			m_gen = g_vgames.generation;
+			return;
+		}
+		// Match what xboxfs / Title Maker do: drive defaults to "E" for the
+		// harddrive view. Future-proofed for F/G if those ever come back.
+		int tmp[VGAMES_MAX];
+		int n = VGames_GetForDirectory("E", m_category, tmp, VGAMES_MAX);
+		m_slice.reserve(n);
+		for (int i = 0; i < n; i++) m_slice.push_back(tmp[i]);
+		// Alphabetical sort, case-insensitive, matches scene expectation.
+		std::sort(m_slice.begin(), m_slice.end(), [](int a, int b) {
+			return strcasecmp(g_vgames.games[a].name, g_vgames.games[b].name) < 0;
+		});
+		m_gen = g_vgames.generation;
+	}
+
+	// Reload from disk and re-filter. Hooked to a future hotkey for paranoid
+	// users; the generation counter normally makes this redundant.
+	void Refresh()
+	{
+		VGames_Reload();
+		Rebuild();
+	}
+
+	// Point the node at a category. "Games" / "Emulators" / "Homebrew" /
+	// "Applications" / "Dashboards". Empty string resets to no-list.
+	void SetCategory(const TCHAR* cat)
+	{
+		if (cat) {
+			strncpy(m_category, cat, sizeof(m_category) - 1);
+			m_category[sizeof(m_category) - 1] = 0;
+		} else {
+			m_category[0] = 0;
+		}
+		Rebuild();
+	}
+
+	int GetCount()
+	{
+		EnsureFresh();
+		return (int)m_slice.size();
+	}
+
+	CStrObject* GetTitle(int i)
+	{
+		EnsureFresh();
+		if (i < 0 || i >= (int)m_slice.size()) return new CStrObject;
+		return new CStrObject(g_vgames.games[m_slice[i]].name);
+	}
+
+	CStrObject* GetTitleID(int i)
+	{
+		EnsureFresh();
+		if (i < 0 || i >= (int)m_slice.size()) return new CStrObject;
+		return new CStrObject(g_vgames.games[m_slice[i]].titleID);
+	}
+
+	CStrObject* GetLaunchURL(int i)
+	{
+		EnsureFresh();
+		if (i < 0 || i >= (int)m_slice.size()) return new CStrObject;
+		return new CStrObject(g_vgames.games[m_slice[i]].launch);
+	}
+
+	// Returns the Xbox-style icon path. xboxfs.h intercepts the load and
+	// redirects to Configs/icons/<titleID>.{jpg,png} via VGames_GetIconPath.
+	CStrObject* GetIcon(int i)
+	{
+		EnsureFresh();
+		if (i < 0 || i >= (int)m_slice.size()) return new CStrObject;
+		const VirtualGame& g = g_vgames.games[m_slice[i]];
+		char buf[MAX_PATH];
+		snprintf(buf, sizeof(buf), "%s:\\%s\\%s\\icon.jpg",
+		         g.drive[0] ? g.drive : "E",
+		         g.category[0] ? g.category : "Games",
+		         g.name);
+		return new CStrObject(buf);
+	}
+
+	// Fire the launch. DesktopLaunchTitle takes the Xbox-style folder path
+	// the dashboard uses everywhere else; the launch URL itself comes from
+	// the VGames entry that path maps back to.
+	void LaunchTitle(int i)
+	{
+		EnsureFresh();
+		if (i < 0 || i >= (int)m_slice.size()) return;
+		const VirtualGame& g = g_vgames.games[m_slice[i]];
+		char devicePath[MAX_PATH];
+		snprintf(devicePath, sizeof(devicePath),
+		         "\\Device\\Harddisk0\\Partition1\\%s\\%s",
+		         g.category[0] ? g.category : "Games",
+		         g.name);
+		DesktopLaunchTitle(devicePath);
+	}
+};
+
+IMPLEMENT_NODE("GamesCollection", CGamesCollection, CNode)
+
+START_NODE_PROPS(CGamesCollection, CNode)
+END_NODE_PROPS()
+
+#undef _FND_CLASS
+#define _FND_CLASS CGamesCollection
+START_NODE_FUN(CGamesCollection, CNode)
+	NODE_FUN_VS(SetCategory)
+	NODE_FUN_IV(GetCount)
+	NODE_FUN_SI(GetTitle)
+	NODE_FUN_SI(GetTitleID)
+	NODE_FUN_SI(GetLaunchURL)
+	NODE_FUN_SI(GetIcon)
+	NODE_FUN_VI(LaunchTitle)
+	NODE_FUN_VV(Refresh)
+END_NODE_FUN()
+
+
+// ============================================================================
 // CDisplay -- XAP-callable view over the desktop window's resolution + mode.
 // Same g_windowResolution / g_windowMode the ImGui Settings -> Display tab
 // drives, so changes from either surface stay in sync.

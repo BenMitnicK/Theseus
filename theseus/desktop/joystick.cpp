@@ -447,7 +447,7 @@ void CJoystick::PollSDL(SDL_GameController* gc, JoySnapshot* out)
 
         // Analog: A,B,X,Y,Black,White,LTrig,RTrig
         if (keys[SDL_SCANCODE_RETURN] || keys[SDL_SCANCODE_SPACE]) out->analogDown[0] = true;  // A
-        if (keys[SDL_SCANCODE_BACKSPACE] || keys[SDL_SCANCODE_ESCAPE]) out->analogDown[1] = true;  // B
+        if (keys[SDL_SCANCODE_B] || keys[SDL_SCANCODE_ESCAPE]) out->analogDown[1] = true;  // B
         if (keys[SDL_SCANCODE_X]) out->analogDown[2] = true;  // X
         if (keys[SDL_SCANCODE_Y]) out->analogDown[3] = true;  // Y
         if (keys[SDL_SCANCODE_GRAVE]) out->analogDown[4] = true;  // Black
@@ -460,7 +460,11 @@ void CJoystick::PollSDL(SDL_GameController* gc, JoySnapshot* out)
         if (keys[SDL_SCANCODE_DOWN]) out->digitalDown[1] = true;
         if (keys[SDL_SCANCODE_LEFT]) out->digitalDown[2] = true;
         if (keys[SDL_SCANCODE_RIGHT]) out->digitalDown[3] = true;
-        // Don't map keyboard to Start -- Enter is A only (Start+A = double OnADown)
+        // Don't map keyboard to Start -- Enter is A only (Start+A = double OnADown).
+        // Backspace fires digital Back (which routes to OnBDown). The letter B
+        // key fires analog B (also OnBDown). Each key fires OnBDown exactly
+        // once per press; sharing one key between both would double-fire and
+        // skip a back-nav level.
         if (keys[SDL_SCANCODE_BACKSPACE]) out->digitalDown[5] = true;  // Back
         if (keys[SDL_SCANCODE_Z]) out->digitalDown[6] = true;  // LThumb
         if (keys[SDL_SCANCODE_C]) out->digitalDown[7] = true;  // RThumb

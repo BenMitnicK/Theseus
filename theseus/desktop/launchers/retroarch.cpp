@@ -540,7 +540,7 @@ int WalkOnePlaylist(const char* filePath, RetroArchItemCB cb, void* userdata) {
 		ExtractStringField(objStart, objEnd, "core_name", coreName, sizeof(coreName));
 		ExtractStringField(objStart, objEnd, "core_path", corePath, sizeof(corePath));
 
-		if (label[0] && path2[0]) {
+		if (path2[0]) {
 			cb(label, path2, dbName, coreName, corePath, userdata);
 			count++;
 		}
@@ -584,6 +584,14 @@ int RetroArch_WalkPlaylists(const char* playlistsDir,
 		closedir(d);
 	}
 #endif
+
+	// Also walk the recent-launches history under builtin/ which lives
+	// outside the top-level .lpl glob.
+	char history[800];
+	snprintf(history, sizeof(history), "%s%cbuiltin%ccontent_history.lpl",
+	         playlistsDir, kPathSep, kPathSep);
+	if (FileExists(history)) total += WalkOnePlaylist(history, cb, userdata);
+
 	return total;
 }
 

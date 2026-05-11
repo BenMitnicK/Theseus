@@ -149,6 +149,38 @@ static void TM_RAImportItem(const char* label, const char* path,
                             const char* corePath, void* ud) {
     TM_RAImportCtx* ctx = (TM_RAImportCtx*)ud;
 
+    // content_history items leave label / db_name empty. Derive title
+    // from the filename and the system from core_name's
+    // "<Manufacturer> - <System> (<core>)" suffix.
+    char effLabel[256];
+    if (label && *label) {
+        strncpy(effLabel, label, sizeof(effLabel) - 1);
+        effLabel[sizeof(effLabel) - 1] = 0;
+    } else {
+        TM_DeriveRomTitle(path, effLabel, sizeof(effLabel));
+    }
+
+    char effDbName[256];
+    if (dbName && *dbName) {
+        strncpy(effDbName, dbName, sizeof(effDbName) - 1);
+        effDbName[sizeof(effDbName) - 1] = 0;
+    } else if (coreName && *coreName) {
+        strncpy(effDbName, coreName, sizeof(effDbName) - 1);
+        effDbName[sizeof(effDbName) - 1] = 0;
+        char* paren = strrchr(effDbName, '(');
+        if (paren) {
+            while (paren > effDbName && paren[-1] == ' ') paren--;
+            *paren = 0;
+        }
+        size_t l = strlen(effDbName);
+        if (l + 5 < sizeof(effDbName)) strcpy(effDbName + l, ".lpl");
+    } else {
+        effDbName[0] = 0;
+    }
+
+    label  = effLabel;
+    dbName = effDbName;
+
     char coreFile[256] = "";
     bool detect = (corePath[0] == 0 || strcmp(corePath, "DETECT") == 0 ||
                    strcmp(coreName, "DETECT") == 0);
@@ -158,8 +190,16 @@ static void TM_RAImportItem(const char* label, const char* path,
         sysName[sizeof(sysName) - 1] = 0;
         size_t sl = strlen(sysName);
         if (sl > 4 && strcmp(sysName + sl - 4, ".lpl") == 0) sysName[sl - 4] = 0;
-        if (!RetroArch_FindCoreForSystem(ctx->installRoot, sysName,
+
+        // Playlists name systems as "<Manufacturer> - <System>"; .info
+        // files only store <System> in systemname=. Strip the prefix.
+        const char* lookup = sysName;
+        const char* dash = strstr(sysName, " - ");
+        if (dash) lookup = dash + 3;
+
+        if (!RetroArch_FindCoreForSystem(ctx->installRoot, lookup,
                                           coreFile, sizeof(coreFile))) {
+            fprintf(stderr, "[tm] import skip: no core for system %s\n", lookup);
             ctx->skipped++;
             return;
         }

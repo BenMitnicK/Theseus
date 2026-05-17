@@ -397,6 +397,29 @@ void RenderSettingsWindow() {
                 SaveDesktopSettings();
             }
 
+            ImGui::AlignTextToFramePadding(); ImGui::Text("Renderer:");
+            ImGui::SameLine(kLabelX); ImGui::SetNextItemWidth(kWidgetW);
+            static const char* s_rendererLabels[] = {
+                "Auto",
+                "Direct3D 11",
+                "Vulkan",
+                "OpenGL",
+                "Metal",
+                "OpenGL ES",
+            };
+            if (ImGui::Combo("##renderer", &g_rendererPref, s_rendererLabels, 6)) {
+                SaveDesktopSettings();
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("(?)");
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip(
+                    "Takes effect on next launch.\n"
+                    "Auto picks the best backend for your OS\n"
+                    "(Metal on macOS, Direct3D 11 on Windows,\n"
+                    "Vulkan on Linux). Pick a specific backend\n"
+                    "if Auto doesn't work for you.");
+
             ImGui::AlignTextToFramePadding(); ImGui::Text("Display Mode:");
             ImGui::SameLine(kLabelX); ImGui::SetNextItemWidth(kWidgetW);
             if (ImGui::Combo("##dispmode", &g_windowMode, s_displayModeLabels, 3)) {

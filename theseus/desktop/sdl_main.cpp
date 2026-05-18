@@ -481,6 +481,17 @@ void LoadDesktopSettings() {
         }
         else if (strncmp(line, "Hwdec=", 6) == 0)
             g_hwdec = atoi(line + 6) != 0;
+        else if (strncmp(line, "Renderer=", 9) == 0) {
+            const char* v = line + 9;
+            // Order matters: opengles before opengl, metal before "" prefix.
+            if      (strncmp(v, "auto",     4) == 0) g_rendererPref = 0;
+            else if (strncmp(v, "d3d11",    5) == 0) g_rendererPref = 1;
+            else if (strncmp(v, "vulkan",   6) == 0) g_rendererPref = 2;
+            else if (strncmp(v, "opengles", 8) == 0 ||
+                     strncmp(v, "gles",     4) == 0) g_rendererPref = 5;
+            else if (strncmp(v, "opengl",   6) == 0) g_rendererPref = 3;
+            else if (strncmp(v, "metal",    5) == 0) g_rendererPref = 4;
+        }
         else if (strncmp(line, "Resolution=", 11) == 0) {
             int n = atoi(line + 11);
             if (n == 0 || n == 720 || n == 1080 || n == 1440 || n == 2160)
@@ -540,6 +551,15 @@ void SaveDesktopSettings() {
     fprintf(fp, "Vsync=%d\n",               g_vsyncMode);
     fprintf(fp, "FpsCap=%d\n",              g_fpsCap);
     fprintf(fp, "Hwdec=%d\n",               g_hwdec ? 1 : 0);
+    {
+        const char* rname = (g_rendererPref == 1) ? "d3d11"
+                          : (g_rendererPref == 2) ? "vulkan"
+                          : (g_rendererPref == 3) ? "opengl"
+                          : (g_rendererPref == 4) ? "metal"
+                          : (g_rendererPref == 5) ? "opengles"
+                          : "auto";
+        fprintf(fp, "Renderer=%s\n", rname);
+    }
     fprintf(fp, "Resolution=%d\n",          g_windowResolution);
     fprintf(fp, "DisplayMode=%d\n",         g_windowMode);
     fprintf(fp, "\n[CRT]\n");
@@ -794,6 +814,11 @@ int  g_msaaSamples = 4;       // 0=off, 2/4/8x MSAA (default 4x)
 bool g_msaaChangeRequested = false;
 // 0=adaptive (-1, fall back to 1), 1=on (1), 2=off (0). Default adaptive.
 int  g_vsyncMode = 0;
+// 0 = auto, 1 = d3d11, 2 = vulkan, 3 = opengl, 4 = metal, 5 = opengles.
+// Takes effect on next launch; bgfx::init cannot switch backends mid-session.
+// Picking a backend the host doesn't support (e.g. d3d11 on Linux, metal on
+// Windows) falls through to bgfx auto-pick during init.
+int  g_rendererPref = 0;
 bool g_vsyncChangeRequested = false;
 
 // Manual FPS cap (0 = unlimited). Applied via SDL_Delay before SwapWindow.
@@ -1189,13 +1214,19 @@ int main(int argc, char* argv[]) {
             bgfxInit.resolution.width   = 1280;
             bgfxInit.resolution.height  = 720;
             bgfxInit.resolution.reset   = BgfxResetFlags();
-            // macOS: auto-pick (Metal). Windows: pin Vulkan. D3D11 would work
-            // too but needs DXBC, which only fxc.exe (Windows-only) can build.
-#if defined(_WIN32)
-            bgfxInit.type = bgfx::RendererType::Vulkan;
-#else
-            bgfxInit.type = bgfx::RendererType::Count; // auto-pick best backend
-#endif
+            // Renderer pick. User override via Config.ini Renderer key
+            // (auto / d3d11 / vulkan / opengl / metal / opengles). Default
+            // is auto, which lets bgfx pick the best backend for the host
+            // (Metal on macOS, D3D11 on Windows, Vulkan on Linux). Picking
+            // a backend the host doesnt provide drops through to auto.
+            switch (g_rendererPref) {
+                case 1: bgfxInit.type = bgfx::RendererType::Direct3D11; break;
+                case 2: bgfxInit.type = bgfx::RendererType::Vulkan;     break;
+                case 3: bgfxInit.type = bgfx::RendererType::OpenGL;     break;
+                case 4: bgfxInit.type = bgfx::RendererType::Metal;      break;
+                case 5: bgfxInit.type = bgfx::RendererType::OpenGLES;   break;
+                default: bgfxInit.type = bgfx::RendererType::Count;     break;
+            }
             if (!bgfx::init(bgfxInit)) {
                 fprintf(stderr, "bgfx::init failed\n");
             } else {

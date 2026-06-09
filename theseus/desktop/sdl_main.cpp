@@ -348,7 +348,8 @@ static bool   s_softRestartPending = false; // reinit after game exits
 
 // Audio mute state (Ctrl+M toggle, auto-muted during game launch)
 bool g_audioMuted = false;       // user choice (Ctrl+M)
-float g_masterVolume = 1.0f;     // 0.0 - 1.0, applied to mixer + libmpv
+float g_masterVolume = 1.0f;
+bool g_audioBackground = false;     // 0.0 - 1.0, applied to mixer + libmpv
 bool g_useMilkdropViz = false;   // opt-in: replace legacy orb viz with projectM
 bool g_showAlbumCover = false;   // when set + album.* present, replace orb viz with cover
 bool g_windowFocused = true;     // SDL focus state
@@ -361,7 +362,7 @@ static void ApplyEffectiveMute()
     extern bool g_mediaFullscreen;
     extern bool MilkdropWindow_IsOpen();
     bool focusLost = !g_windowFocused && !MilkdropWindow_IsOpen();
-    bool shouldMute = g_audioMuted || focusLost || g_mediaFullscreen;
+    bool shouldMute = g_audioMuted || (!g_audioBackground && focusLost) || g_mediaFullscreen;
     if (shouldMute) DashAudio_MuteAll();
     else            DashAudio_UnmuteAll();
 }
@@ -530,6 +531,9 @@ void LoadDesktopSettings() {
             if (v < 0.0f) v = 0.0f; if (v > 1.0f) v = 1.0f;
             g_masterVolume = v;
         }
+        else if (strncmp(line, "AudioBackground=", 16) == 0) {
+            g_audioBackground = atoi(line + 16) != 0;
+        }
         else if (strncmp(line, "UseMilkdropViz=", 15) == 0)
             g_useMilkdropViz = atoi(line + 15) != 0;
         else if (strncmp(line, "ShowAlbumCover=", 15) == 0)
@@ -602,6 +606,7 @@ void SaveDesktopSettings() {
     fprintf(fp, "FpsCap=%d\n",              g_fpsCap);
     fprintf(fp, "Hwdec=%d\n",               g_hwdec ? 1 : 0);
     fprintf(fp, "MasterVolume=%.3f\n",      g_masterVolume);
+    fprintf(fp, "AudioBackground=%d\n",    g_audioBackground ? 1 : 0);
     fprintf(fp, "UseMilkdropViz=%d\n",      g_useMilkdropViz ? 1 : 0);
     fprintf(fp, "ShowAlbumCover=%d\n",      g_showAlbumCover ? 1 : 0);
     {

@@ -16,6 +16,9 @@
 
 extern bool  g_bWireframe;
 extern float g_masterVolume;
+extern bool g_audioBackground;
+extern void ApplyEffectiveMute_Public();
+extern void SaveDesktopSettings();
 
 #include <cstdio>
 #include <cstring>
@@ -220,6 +223,11 @@ void RenderMainMenuBar() {
             float v = volPct / 100.0f;
             DashAudio_SetMasterVolume(v);
             MediaPlayer_SetMasterVolume(v);
+        }
+
+        if (ImGui::Checkbox("Keep audio playing in background", &g_audioBackground)) {
+            ApplyEffectiveMute_Public();
+            SaveDesktopSettings();
         }
         if (ImGui::IsItemDeactivatedAfterEdit()) {
             SaveDesktopSettings();

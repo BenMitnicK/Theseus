@@ -4,7 +4,7 @@
 // include std.h, to avoid #define new conflicts with STL.
 
 #include <SDL.h>
-#include <SDL2/SDL_mixer.h>
+#include <SDL_mixer.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -4,7 +4,7 @@
 // include std.h, to avoid #define new conflicts with STL.
 
 #include <SDL.h>
-#include <SDL_mixer.h>
+#include <SDL2/SDL_mixer.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -801,6 +801,15 @@ static int MetadataLookup(mpv_node* meta, const char* key, std::string* out)
     return 0;
 }
 
+static int ProbeSongDurationWithMixer(const std::string& path)
+{
+    Mix_Music* probe = Mix_LoadMUS(path.c_str());
+    if (!probe) return 0;
+    double d = Mix_MusicDuration(probe);
+    Mix_FreeMusic(probe);
+    return (d > 0.0) ? (int)(d + 0.5) : 0;
+}
+
 static bool ProbeSong(mpv_handle* h, const std::string& path, Song& out)
 {
     if (!h) return false;
@@ -820,6 +829,7 @@ static bool ProbeSong(mpv_handle* h, const std::string& path, Song& out)
     double dur = 0;
     mpv_get_property(h, "duration", MPV_FORMAT_DOUBLE, &dur);
     if (dur > 0) out.duration = (int)(dur + 0.5);
+    if (out.duration <= 0) out.duration = ProbeSongDurationWithMixer(path);
 
     mpv_node meta;
     memset(&meta, 0, sizeof(meta));
@@ -860,7 +870,7 @@ struct DBEntry {
 typedef std::map<std::string, DBEntry> DBMap;
 
 static const uint32_t kMusicDBMagic   = 0x42444D54; // 'TMDB'
-static const uint32_t kMusicDBVersion = 2;
+static const uint32_t kMusicDBVersion = 3;
 
 static void DB_WriteU32(FILE* fp, uint32_t v) { fwrite(&v, 4, 1, fp); }
 static void DB_WriteI32(FILE* fp, int32_t  v) { fwrite(&v, 4, 1, fp); }
@@ -1044,6 +1054,8 @@ int DashMusic_Scan(const char* musicRoot)
             if (!probeMpv) probeMpv = ProbeMpv_Create();
             if (probeMpv && ProbeSong(probeMpv, fullPath, song))
                 probedCount++;
+            if (song.duration <= 0)
+                song.duration = ProbeSongDurationWithMixer(fullPath);
         }
         DBEntry e;
         SongToDB(song, e);

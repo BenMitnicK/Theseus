@@ -1130,6 +1130,8 @@ endif
 # Same source list as desktop. the compiler reads the same files.
 WIN64_OBJS = $(patsubst $(THESEUS_SRC)/%.cpp,$(WIN64_DIR)/%.o,$(WIN64_SRCS))
 WIN64_DEPS = $(WIN64_OBJS:.o=.d)
+WIN64_RES_RC  = $(THESEUS_SRC)/desktop/resources/theseus.rc
+WIN64_RES_OBJ = $(WIN64_DIR)/desktop/resources/theseus_res.o
 -include $(WIN64_DEPS)
 
 .PHONY: desktop-win64 desktop-win64-clean projectm-deps-win64 projectm-win64-clean
@@ -1167,9 +1169,9 @@ $(PROJECTM_WIN64_MARKER):
 projectm-win64-clean:
 	rm -rf $(PROJECTM_SRC)/build-win64 $(PROJECTM_WIN64_PREFIX)
 
-$(WIN64_TARGET): $(WIN64_OBJS)
+$(WIN64_TARGET): $(WIN64_OBJS) $(WIN64_RES_OBJ)
 	@mkdir -p $(WIN64_DIR)
-	$(WIN64_CXX) -o $@ $(WIN64_OBJS) $(WIN64_LDFLAGS)
+	$(WIN64_CXX) -o $@ $(WIN64_OBJS) $(WIN64_RES_OBJ) $(WIN64_LDFLAGS)
 	@# Bundle every DLL the exe needs so the build directory is a self-
 	@# contained Windows drop. -static-libgcc -static-libstdc++ folds the
 	@# core runtime in; SDL2 / SDL2_mixer / libmpv / libcurl / libwinpthread
@@ -1205,6 +1207,11 @@ $(WIN64_TARGET): $(WIN64_OBJS)
 	 STAMP="$$BASE-$$(date -u '+%y%m%d')-$$(git -C $(THESEUS_SRC)/.. rev-parse --short HEAD 2>/dev/null || echo unknown)"; \
 	 printf '[default]\nversion=%s\n' "$$STAMP" > "$$VFILE"
 	@echo "    (bundled DLLs + Configs/Data/Library + stamped version -> $(WIN64_DIR))"
+
+
+$(WIN64_RES_OBJ): $(WIN64_RES_RC)
+	@mkdir -p $(dir $@)
+	x86_64-w64-mingw32-windres -I$(THESEUS_SRC)/desktop/resources -i $< -o $@
 
 $(WIN64_DIR)/%.o: $(THESEUS_SRC)/%.cpp
 	@mkdir -p $(dir $@)
